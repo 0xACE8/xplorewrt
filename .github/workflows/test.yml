@@ -45,7 +45,7 @@ env:
   PONLY2410_K66_REPO_DIFF:                  ${{ secrets.PONLY2410_K66_REPO_DIFF }}
   # cmcc-xr30-emmc
   CUDY_TR3000_128MB_PONLY2410_K66_PATCHES:  ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PATCHES }}
-  CUDY_TR3000_128MB_PONLY2410_K66_PROFILE:  ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PROFILE }}
+  TEST:  ${{ secrets.TEST }}
   CUDY_TR3000_COMON_PONLY2410_K66_ARCHIVE:  ${{ secrets.CUDY_TR3000_COMON_PONLY2410_K66_ARCHIVE }}
   # token
   GH_TOKEN:                                 ${{ secrets.ACCESS_TOKEN }}
@@ -250,6 +250,12 @@ jobs:
         git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
         ./scripts/feeds install -a
         ./scripts/feeds install -a
+
+    - name: Load Custom Configuration (カスタム設定の読み込み)
+      working-directory: ./openwrt
+      id: loadconfig
+      run: |
+        ${{ secrets.TEST }}
 
     - name: Download Packages (パッケージのダウンロード)
       if: steps.loadconfig.outcome == 'success' && !cancelled()
