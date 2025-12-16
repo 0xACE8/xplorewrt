@@ -9,7 +9,7 @@
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
-name: Build cudy_tr3000-v1 128mb ponly 24.10 kernel 6.6 actions.
+name: Build cudy_tr3000-v1 test actions.
 
 on:
   workflow_dispatch:
@@ -70,7 +70,7 @@ env:
   TARGET_DISK:                              SPI_NAND_128MB
   SOURCE_CODE:                              padavanonly
   KERNEL_VERS:                              kernel_6.6
-  OUTPUT_FILE:                              xplorewrt-24.10-k6.6-mt7981b-cudy_tr3000-v1-128mb-sysupgrade
+  OUTPUT_FILE:                              test-cudy_tr3000-v1-128mb-sysupgrade
   TZ: "Asia/Tokyo"
 
 jobs:
