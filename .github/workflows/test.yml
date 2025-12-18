@@ -452,7 +452,7 @@ jobs:
 
         FINAL_MSG=$(echo "$MSG" | sed 's/ /%20/g')
 
-        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage" \
           -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
           -d text="${FINAL_MSG}"
 
