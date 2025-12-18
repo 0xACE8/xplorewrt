@@ -227,6 +227,7 @@ jobs:
         df -hT $PWD
         git clone $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD openwrt
         cd openwrt
+        ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PATCHES }}
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
 
         # Remove China Mirrors (中国国内ミラーの削除)
