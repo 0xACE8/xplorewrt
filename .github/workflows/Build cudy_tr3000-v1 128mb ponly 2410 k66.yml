@@ -311,6 +311,26 @@ jobs:
         SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
         SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
       run: |
+        if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
+            STAT_RESTORE="✅"
+        else
+            STAT_RESTORE="⏺️"
+        fi
+        if [[ "$INPUT_ARTIFACT" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_firmware"* ]]; then
+            STAT_ARTIFACT="✅"
+        else
+            STAT_ARTIFACT="⏺️"
+        fi
+        if [[ "$INPUT_RELEASE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_release"* ]]; then
+            STAT_RELEASE="✅"
+        else
+            STAT_RELEASE="⏺️"
+        fi
+        if [[ "$INPUT_WENSHUSHU" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_wenshushu"* ]]; then
+            STAT_WENSHUSHU="✅"
+        else
+            STAT_WENSHUSHU="⏺️"
+        fi
         MSG="❌ ビルドが失敗しました！ ❌"
         MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報  ＝＝＝＝＝"
         MSG="${MSG}%0A🖥️対応機種: ${DEVICE_NAME}"
@@ -324,7 +344,7 @@ jobs:
         MSG="${MSG}%0A  •⚙️設定復元:    ${STAT_RESTORE}"
         MSG="${MSG}%0A  •💾構築成果:    ${STAT_ARTIFACT}"
         MSG="${MSG}%0A  •🚀公開配信:    ${STAT_RELEASE}"
-        MSG="${MSG}%0A  •☁️文氏転送:    ${STAT_WEN}"
+        MSG="${MSG}%0A  •☁️文氏転送:    ${STAT_WENSHUSHU}"
         
         MSG="${MSG}%0A%0A＝＝＝＝  エ ラ ー 情 報   ＝＝＝＝"
         MSG="${MSG}%0A  •❌失敗時刻: $(date +'%Y年%m月%d日_%H時%M分')"
