@@ -321,13 +321,13 @@ jobs:
         MSG="${MSG}%0A🌿ブランチ: ${SOURCE_HEAD}"
 
         MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧  ＝＝＝＝＝"
-        MSG="${MSG}%0A⚙️設定復元: ${STAT_RESTORE}"
-        MSG="${MSG}%0A💾構築成果: ${STAT_ARTIFACT}"
-        MSG="${MSG}%0A🚀公開配信: ${STAT_RELEASE}"
-        MSG="${MSG}%0A☁️文氏転送: ${STAT_WEN}"
+        MSG="${MSG}%0A  •⚙️設定復元:    ${STAT_RESTORE}"
+        MSG="${MSG}%0A  •💾構築成果:    ${STAT_ARTIFACT}"
+        MSG="${MSG}%0A  •🚀公開配信:    ${STAT_RELEASE}"
+        MSG="${MSG}%0A  •☁️文氏転送:    ${STAT_WEN}"
         
         MSG="${MSG}%0A%0A＝＝＝＝  エ ラ ー 情 報   ＝＝＝＝"
-        MSG="${MSG}%0A❌失敗時刻: $(date +'%Y年%m月%d日_%H時%M分')"
+        MSG="${MSG}%0A  •❌失敗時刻: $(date +'%Y年%m月%d日_%H時%M分')"
         MSG="${MSG}%0A＝＝＝-----------------------＝＝＝"
 
         FINAL_MSG=$(echo "$MSG" | sed 's/ /%20/g')
@@ -485,13 +485,13 @@ jobs:
         MSG="${MSG}%0A🌿ブランチ: ${SOURCE_HEAD}"
 
         MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧  ＝＝＝＝＝"
-        MSG="${MSG}%0A⚙️設定復元: ${STAT_RESTORE}"
-        MSG="${MSG}%0A💾構築成果: ${STAT_ARTIFACT}"
-        MSG="${MSG}%0A🚀公開配信: ${STAT_RELEASE}"
-        MSG="${MSG}%0A☁️文氏転送: ${STAT_WEN}"
+        MSG="${MSG}%0A  •⚙️設定復元:    ${STAT_RESTORE}"
+        MSG="${MSG}%0A  •💾構築成果:    ${STAT_ARTIFACT}"
+        MSG="${MSG}%0A  •🚀公開配信:    ${STAT_RELEASE}"
+        MSG="${MSG}%0A  •☁️文氏転送:    ${STAT_WEN}"
         
         MSG="${MSG}%0A%0A＝＝＝＝＝  下 載 信 息  ＝＝＝＝＝"
-        MSG="${MSG}%0A📦ファイル:%0A　　${FILENAME}"
+        MSG="${MSG}%0A📦ファイル:%0A　　${OUTPUT_FILE}"
 
         if [[ -n "$WEN_MSG" ]]; then
              MSG="${MSG}%0A${WEN_MSG}"
