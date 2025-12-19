@@ -228,9 +228,6 @@ jobs:
       run: |
         df -hT $PWD
         git clone $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD openwrt
-        cd openwrt
-        ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PATCHES }}
-        ${{ secrets.ADD_EXTRA_SOURCE }}
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
 
         # Remove China Mirrors (中国国内ミラーの削除)
@@ -249,6 +246,8 @@ jobs:
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
       run: |
+        ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PATCHES }}
+        ${{ secrets.ADD_EXTRA_SOURCE }}
         ./scripts/feeds update -a
         rm -rf feeds/packages/lang/golang
         git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
