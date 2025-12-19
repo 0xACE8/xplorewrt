@@ -9,7 +9,7 @@
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
-name: Build cudy_tr3000-v1 128mb ponly 24.10 kernel 6.6 actions.
+name: Build cudy_tr3000-v1 128mb padavanonly 24.10 k6.6 actions.
 
 on:
   workflow_dispatch:
