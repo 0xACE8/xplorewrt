@@ -9,7 +9,7 @@
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
-name: Build cudy_tr3000-v1 test actions.
+name: Build cudy_tr3000-v1 128mb ponly 24.10 kernel 6.6 actions.
 
 on:
   workflow_dispatch:
@@ -45,7 +45,7 @@ env:
   PONLY2410_K66_REPO_DIFF:                  ${{ secrets.PONLY2410_K66_REPO_DIFF }}
   # cmcc-xr30-emmc
   CUDY_TR3000_128MB_PONLY2410_K66_PATCHES:  ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PATCHES }}
-  TEST:  ${{ secrets.TEST }}
+  CUDY_TR3000_128MB_PONLY2410_K66_PROFILE:  ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PROFILE }}
   CUDY_TR3000_COMON_PONLY2410_K66_ARCHIVE:  ${{ secrets.CUDY_TR3000_COMON_PONLY2410_K66_ARCHIVE }}
   # token
   GH_TOKEN:                                 ${{ secrets.ACCESS_TOKEN }}
@@ -69,8 +69,8 @@ env:
   TARGET_CHIP:                              mt7981b
   TARGET_DISK:                              SPI_NAND_128MB
   SOURCE_CODE:                              padavanonly
-  KERNEL_VERS:                              kernel_6.6
-  OUTPUT_FILE:                              test-cudy_tr3000-v1-128mb-sysupgrade
+  KERNEL_VERS:                              KERNEL_6.6.95
+  OUTPUT_FILE:                              xplorewrt-24.10-k6.6-mt7981b-cudy_tr3000-v1-128mb-sysupgrade
   TZ: "Asia/Tokyo"
 
 jobs:
@@ -213,6 +213,8 @@ jobs:
         sudo -E apt -yqq clean
         sudo -E apt -yqq install zip rename dos2unix libfuse-dev
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        sudo -E apt -yqq install cargo
+        rustup target add aarch64-unknown-linux-musl
         sudo -E systemctl daemon-reload
         sudo timedatectl set-timezone "$TZ"
         sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
@@ -228,6 +230,7 @@ jobs:
         git clone $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD openwrt
         cd openwrt
         ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PATCHES }}
+        ${{ secrets.ADD_EXTRA_SOURCE }}
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
 
         # Remove China Mirrors (中国国内ミラーの削除)
@@ -256,7 +259,22 @@ jobs:
       working-directory: ./openwrt
       id: loadconfig
       run: |
-        ${{ secrets.TEST }}
+        ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PROFILE }}
+        ${{ secrets.PONLY2410_K66_REPO_DIFF }}
+        ${{ secrets.ARGON_THEME_CUDY }}
+
+    - name: Restore Config Archive (設定アーカイブの復元)
+      if: steps.loadconfig.outcome == 'success' && (github.event.inputs.restore_config == 'true' || contains(github.event.action, 'restore_config')) && !cancelled()
+      working-directory: ./openwrt
+      run: |
+        rm -rf files
+        ${{ secrets.CUDY_TR3000_COMON_PONLY2410_K66_ARCHIVE }}
+
+    - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
+      if: steps.loadconfig.outcome == 'success' && !cancelled()
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets.BOOST_5G_TO_25DBM }}
 
     - name: Download Packages (パッケージのダウンロード)
       if: steps.loadconfig.outcome == 'success' && !cancelled()
@@ -284,6 +302,41 @@ jobs:
       if: (!cancelled())
       run: df -hT
 
+    - name: Notify Compilation Error (コンパイルエラーの通知)
+      if: steps.compile.outcome != 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
+      env:
+        INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
+        INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
+        INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
+        INPUT_WENSHUSHU: ${{ github.event.inputs.upload_wenshushu }}
+        SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
+        SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
+      run: |
+        MSG="❌ ビルドが失敗しました！ ❌"
+        MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報  ＝＝＝＝＝"
+        MSG="${MSG}%0A🖥️対応機種: ${DEVICE_NAME}"
+        MSG="${MSG}%0A💿容量仕様: ${TARGET_DISK}"
+        MSG="${MSG}%0A🐧カーネル: ${KERNEL_VERS}"
+        MSG="${MSG}%0A👤ソース名: ${SOURCE_CODE}"
+        MSG="${MSG}%0A🌲ソース元: ${SOURCE_TREE}"
+        MSG="${MSG}%0A🌿ブランチ: ${SOURCE_HEAD}"
+
+        MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧  ＝＝＝＝＝"
+        MSG="${MSG}%0A⚙️設定復元: ${STAT_RESTORE}"
+        MSG="${MSG}%0A💾構築成果: ${STAT_ARTIFACT}"
+        MSG="${MSG}%0A🚀公開配信: ${STAT_RELEASE}"
+        MSG="${MSG}%0A☁️文氏転送: ${STAT_WEN}"
+        
+        MSG="${MSG}%0A%0A＝＝＝＝  エ ラ ー 情 報   ＝＝＝＝"
+        MSG="${MSG}%0A❌失敗時刻: $(date +'%Y年%m月%d日_%H時%M分')"
+        MSG="${MSG}%0A＝＝＝-----------------------＝＝＝"
+
+        FINAL_MSG=$(echo "$MSG" | sed 's/ /%20/g')
+
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage" \
+          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d text="${FINAL_MSG}"
+
     - name: Organize Files (ファイルの整理)
       id: organize
       if: steps.compile.outcome == 'success' && !cancelled()
@@ -291,6 +344,8 @@ jobs:
         cd openwrt/bin/targets/*/*
         ls | grep -v *sysupgrade.bin | xargs rm -rdf
         mv *.bin ${{ env.OUTPUT_FILE }}.bin
+        sha512sums ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILE }}.bin
+        ${{ secrets.ACCESS_REPACKAGE }} ${{ env.OUTPUT_FILE }}.bin
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
 
     - name: Upload to Artifacts (Artifactに保存)
@@ -375,7 +430,7 @@ jobs:
             }
           }
 
-    - name: Upload to wenshushu (ウェンおじさんにアップロードする)
+- name: Upload to wenshushu (ウェンおじさんにアップロードする)
       if: steps.compile.outcome == 'success' && steps.organize.outcome == 'success' && (github.event.inputs.upload_wenshushu == 'true' || contains(github.event.action, 'upload_wenshushu')) && !cancelled()
       working-directory: ./openwrt
       run: |
@@ -385,7 +440,7 @@ jobs:
         echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
 
     - name: 📢 Final Report & TG Notify (総合ステータス通知)
-      if: steps.organize.outcome == 'success' && !cancelled()
+      if: steps.organize.outcome == 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
       env:
         INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
         INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
@@ -412,7 +467,7 @@ jobs:
         fi
         if [[ -n "$WENSHUSHU_URL" ]]; then
             STAT_WEN="✅"
-            WEN_MSG="・🧙🏼‍♂️ウェン爺:%0A　　$WENSHUSHU_URL"
+            WEN_MSG="・🧙🏼‍♂️文氏転送:%0A　　$WENSHUSHU_URL"
         elif [[ "$INPUT_WENSHUSHU" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_wenshushu"* ]]; then
             STAT_WEN="❌ (失敗)" 
             WEN_MSG=""
@@ -432,12 +487,12 @@ jobs:
 
         MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧  ＝＝＝＝＝"
         MSG="${MSG}%0A⚙️設定復元: ${STAT_RESTORE}"
-        MSG="${MSG}%0A💾構築成果:  ${STAT_ARTIFACT}"
-        MSG="${MSG}%0A🚀公開配信:  ${STAT_RELEASE}"
-        MSG="${MSG}%0A☁️文氏転送:  ${STAT_WEN}"
+        MSG="${MSG}%0A💾構築成果: ${STAT_ARTIFACT}"
+        MSG="${MSG}%0A🚀公開配信: ${STAT_RELEASE}"
+        MSG="${MSG}%0A☁️文氏転送: ${STAT_WEN}"
         
         MSG="${MSG}%0A%0A＝＝＝＝＝  下 載 信 息  ＝＝＝＝＝"
-        MSG="${MSG}%0A・📦ファイル:%0A　　${FILENAME}"
+        MSG="${MSG}%0A📦ファイル:%0A　　${FILENAME}"
 
         if [[ -n "$WEN_MSG" ]]; then
              MSG="${MSG}%0A${WEN_MSG}"
