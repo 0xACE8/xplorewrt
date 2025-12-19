@@ -228,7 +228,7 @@ jobs:
       run: |
         df -hT $PWD
         git clone $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD openwrt
-        
+        cd ./openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
 
         # Remove China Mirrors (中国国内ミラーの削除)
@@ -239,7 +239,6 @@ jobs:
 
     - name: Cache Toolchain (ツールチェーンのキャッシュ)
       uses: HiGarfield/cachewrtbuild@main
-      working-directory: ./openwrt
       with:
         ccache: true
         mixkey: MT7981b-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]
