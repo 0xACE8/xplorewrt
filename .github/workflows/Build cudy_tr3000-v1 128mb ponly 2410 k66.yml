@@ -241,7 +241,7 @@ jobs:
       with:
         ccache: true
         mixkey: MT7981b-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]
-        prefix: ./openwrt/${{ env.OPENWRT_PATH }}
+        prefix: openwrt/${{ env.OPENWRT_PATH }}
 
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
@@ -486,7 +486,7 @@ jobs:
         fi
         if [[ -n "$WENSHUSHU_URL" ]]; then
             STAT_WEN="✅"
-            WEN_MSG="・🧙🏼‍♂️文氏転送:%0A　　$WENSHUSHU_URL"
+            WEN_MSG="・🧙🏼‍♂️文氏転送:%0A　%20　$WENSHUSHU_URL"
         elif [[ "$INPUT_WENSHUSHU" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_wenshushu"* ]]; then
             STAT_WEN="❌ (失敗)" 
             WEN_MSG=""
@@ -496,28 +496,28 @@ jobs:
         fi
 
         MSG="✅ ビルドが正常に完了しました！ ✅"
-        MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報  ＝＝＝＝＝"
-        MSG="${MSG}%0A🖥️対応機種: ${DEVICE_NAME}"
-        MSG="${MSG}%0A💿容量仕様: ${TARGET_DISK}"
-        MSG="${MSG}%0A🐧カーネル: ${KERNEL_VERS}"
-        MSG="${MSG}%0A👤ソース名: ${SOURCE_CODE}"
-        MSG="${MSG}%0A🌲ソース元: ${SOURCE_TREE}"
-        MSG="${MSG}%0A🌿ブランチ: ${SOURCE_HEAD}"
+        MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•🖥️対応機種:%0A　%20　${DEVICE_NAME}"
+        MSG="${MSG}%0A•💿容量仕様:%0A　%20　${TARGET_DISK}"
+        MSG="${MSG}%0A•🐧カーネル:%0A　%20　${KERNEL_VERS}"
+        MSG="${MSG}%0A•👤ソース名:%0A　%20　${SOURCE_CODE}"
+        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${SOURCE_TREE}"
+        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${SOURCE_HEAD}"
 
-        MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧  ＝＝＝＝＝"
-        MSG="${MSG}%0A  •⚙️設定復元:    ${STAT_RESTORE}"
-        MSG="${MSG}%0A  •💾構築成果:    ${STAT_ARTIFACT}"
-        MSG="${MSG}%0A  •🚀公開配信:    ${STAT_RELEASE}"
-        MSG="${MSG}%0A  •☁️文氏転送:    ${STAT_WEN}"
+        MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
+        MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
+        MSG="${MSG}%0A•🚀公開配信:　%20　 ${STAT_RELEASE}"
+        MSG="${MSG}%0A•☁️文氏転送:　%20　${STAT_WEN}"
         
-        MSG="${MSG}%0A%0A＝＝＝＝＝  下 載 信 息  ＝＝＝＝＝"
-        MSG="${MSG}%0A📦ファイル:%0A　　${OUTPUT_FILE}"
+        MSG="${MSG}%0A%0A＝＝＝＝＝  下 載 信 息 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•📦ファイル:%0A　%20　${OUTPUT_FILE}"
 
         if [[ -n "$WEN_MSG" ]]; then
              MSG="${MSG}%0A${WEN_MSG}"
         fi
         
-        MSG="${MSG}%0A＝＝＝-----------------------＝＝＝"
+        MSG="${MSG}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝"
 
         FINAL_MSG=$(echo "$MSG" | sed 's/ /%20/g')
 
@@ -565,7 +565,7 @@ jobs:
 
     - name: Delete Old Releases (古いリリースの削除)
       uses: actions/github-script@v7
-      if: env.UPLOAD_RELEASE == 'true' && !cancelled()
+      if: steps.organize.outcome == 'success' && (github.event.inputs.upload_release == 'true' || contains(github.event.action, 'upload_release')) && !cancelled()
       with:
         github-token: ${{ env.GH_TOKEN }}
         script: |
