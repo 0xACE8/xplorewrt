@@ -237,7 +237,7 @@ jobs:
       with:
         ccache: true
         mixkey: MT7981b-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]
-        prefix: ${{ env.GITHUB_WORKSPACE }}/openwrt
+        prefix: ${{ github.workspace }}/openwrt
 
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
