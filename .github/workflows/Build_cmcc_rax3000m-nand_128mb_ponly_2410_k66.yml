@@ -255,6 +255,11 @@ jobs:
         ${{ secrets.PONLY2410_K66_REPO_DIFF }}
         ${{ secrets.ARGON_THEME_CMCC }}
 
+    - name: Boost Wi-Fi 5G signal to 25dbm (Wi-Fi 5G信号を25dbmまでブースト)
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets.BOOST_5G_TO_25DBM }}
+
     - name: Download Packages (パッケージのダウンロード)
       if: steps.loadconfig.outcome == 'success' && !cancelled()
       working-directory: ./openwrt
@@ -341,10 +346,10 @@ jobs:
       if: steps.compile.outcome == 'success' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
-        ls | grep -v *sysupgrade.bin | xargs rm -rdf
-        mv *.bin ${{ env.OUTPUT_FILE }}.bin
-        sha512sums ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILE }}.bin
-        ${{ secrets.ACCESS_REPACKAGE }} ${{ env.OUTPUT_FILE }}.bin
+        ls | grep -v *sysupgrade.itb | xargs rm -rdf
+        mv *.itb ${{ env.OUTPUT_FILE }}.itb
+        sha512sums ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILE }}.itb
+        ${{ secrets.ACCESS_REPACKAGE }} ${{ env.OUTPUT_FILE }}.itb
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
 
     - name: Upload to Artifacts (Artifactに保存)
