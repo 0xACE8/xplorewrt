@@ -1,0 +1,563 @@
+#
+# Copyright (c) 2019-2026 0xACE8
+#
+# 本ソフトウェアはフリーソフトウェアであり、MITライセンスの下で公開されています。
+# 詳細については /LICENSE を参照してください。
+#
+# https://github.com/0xACE8
+#
+# 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
+#
+
+name: Build cmcc_rax3000m-nand 128mb ponly 24.10 kernel 6.6 actions.
+
+on:
+  workflow_dispatch:
+    inputs:
+      telegram_notify:
+        description: 'Telegram Notification 🇯🇵 Telegram通知'
+        type: boolean
+        default: false
+      upload_firmware:
+        description: 'Upload to Artifacts　 🇯🇵 Artifactに保存'
+        type: boolean
+        default: false
+      upload_release:
+        description: 'Upload to Release　　 🇯🇵 Releaseに公開'
+        type: boolean
+        default: false
+      upload_wenshushu:
+        description: 'Upload to WENSHUSHU　 🇯🇵 文叔叔に転送'
+        type: boolean
+        default: false
+#  schedule:
+#    - cron: '0 19 * * 0'
+
+env:
+  # xplorewrt 2410
+  PONLY2410_K66_REPO_LINK:                     ${{ secrets.PONLY2410_K66_REPO_LINK }}
+  PONLY2410_K66_REPO_TREE:                     ${{ secrets.PONLY2410_K66_REPO_TREE }}
+  PONLY2410_K66_REPO_HEAD:                     ${{ secrets.PONLY2410_K66_REPO_HEAD }}
+  PONLY2410_K66_REPO_DIFF:                     ${{ secrets.PONLY2410_K66_REPO_DIFF }}
+  # cmcc_rax3000m-nand
+  CMCC_RAX3000M_NAND_PONLY2410_K66_PATCHES:    ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_PATCHES }}
+  CMCC_RAX3000M_NAND_PONLY2410_K66_PROFILE:    ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_PROFILE }}
+  # token
+  GH_TOKEN:                                    ${{ secrets.ACCESS_TOKEN }}
+  ACCESS_TOKEN:                                ${{ secrets.ACCESS_TOKEN }}
+  # feeds source
+  ADD_EXTRA_SOURCE:                            ${{ secrets.ADD_EXTRA_SOURCE }}
+  # check sha512sum
+  ACCESS_SHA512SUM:                            ${{ secrets.ACCESS_SHA512SUM }}
+  ACCESS_REPACKAGE:                            ${{ secrets.ACCESS_REPACKAGE }}
+  # luci & packages repo
+  PLUGIN_REPO_SLUG:                            ${{ secrets.PLUGIN_REPO_SLUG }}
+  PLUGIN_REPO_HEAD:                            ${{ secrets.PLUGIN_REPO_HEAD }}
+  PLUGIN_REPO_FLOW:                            ${{ secrets.PLUGIN_REPO_FLOW }}
+  # cmcc color sytle for argon
+  ARGON_THEME_CMCC:                            ${{ secrets.ARGON_THEME_CMCC }}
+  # telegram bot
+  TELEGRAM_BOT_KEY:                            ${{ secrets.TELEGRAM_BOT_KEY }}
+  TELEGRAM_CHAT_ID:                            ${{ secrets.TELEGRAM_CHAT_ID }}
+  # hardware & repo info
+  DEVICE_NAME:                                 CMCC_RAX3000M_NAND
+  TARGET_CHIP:                                 mt7981b
+  TARGET_DISK:                                 SPI_NAND_128MB
+  SOURCE_CODE:                                 padavanonly
+  KERNEL_VERS:                                 KERNEL_6.6.95
+  OUTPUT_FILE:                                 xplorewrt-24.10-k6.6-mt7981b-cmcc_rax3000m-nand-128mb-sysupgrade
+  TZ: "Asia/Tokyo"
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: write
+
+    steps:
+    - name: Sync and Wait for Plugin Repo (プラグインリポジトリの同期と待機)
+      run: |
+        echo "🔍 Checking last successful sync time..."
+        
+        LAST_RUN_TIME=$(gh run list --workflow "$PLUGIN_REPO_FLOW" --repo "$PLUGIN_REPO_SLUG" --status success --limit 1 --json updatedAt --jq '.[0].updatedAt')
+        DO_SYNC="true"
+        
+        if [ -n "$LAST_RUN_TIME" ] && [ "$LAST_RUN_TIME" != "null" ]; then
+          LAST_TS=$(date -d "$LAST_RUN_TIME" +%s)
+          NOW_TS=$(date +%s)
+          DIFF=$((NOW_TS - LAST_TS))
+          
+          if [ "$DIFF" -lt 86400 ]; then
+            echo "⏭️ Last sync was only $((DIFF / 3600)) hours ago (Success at: $LAST_RUN_TIME). Skipping."
+            DO_SYNC="false"
+          else
+            echo "⚠️ Last sync was $((DIFF / 3600)) hours ago. Update needed."
+          fi
+        else
+          echo "⚠️ No previous successful run found. Forcing sync."
+        fi
+
+        if [ "$DO_SYNC" == "true" ]; then
+          echo "🚀 Triggering workflow..."
+
+          if ! gh workflow run "$PLUGIN_REPO_FLOW" --repo "$PLUGIN_REPO_SLUG" --ref "$PLUGIN_REPO_HEAD"; then
+            echo "❌ Error: Failed to trigger the workflow."
+            exit 1
+          fi
+            
+          echo "🕵️‍♂️ Waiting for Run ID..."
+          echo "⏳ Max wait time: 10 minutes (60 attempts x 10s)"
+            
+          FOUND_ID=""
+          
+          for i in {1..60}; do
+            echo "   Attempt $i/60: Checking for active runs..."
+            sleep 10
+            
+            RUN_ID=$(gh run list --workflow "$PLUGIN_REPO_FLOW" --repo "$PLUGIN_REPO_SLUG" --limit 1 --json databaseId,status --jq 'map(select(.status != "completed")) | .[0].databaseId')
+              
+            if [ -n "$RUN_ID" ] && [ "$RUN_ID" != "null" ]; then
+              FOUND_ID=$RUN_ID
+              echo "✅ Caught the Run ID! Run ID: $FOUND_ID"
+              break
+            fi
+          done
+            
+          if [ -z "$FOUND_ID" ]; then
+            echo "❌ Error: Timed out after 10 minutes waiting for Run ID"
+            echo "   Possible reason: GitHub Actions queue is extremely busy."
+            exit 1
+          fi
+            
+          echo "👀 Waiting sync..."
+
+          gh run watch "$FOUND_ID" --repo "$PLUGIN_REPO_SLUG" --exit-status
+          echo "🍽️ Plugin sync complete"
+        else
+          echo "😴 Skipping sync to save resources (Recently synced)."
+        fi
+
+    - name: Checkout (チェックアウト)
+      uses: actions/checkout@main
+      with:
+        fetch-depth: 0
+
+    - name: Pre-Free Disk Space (ディスク解放前の準備)
+      run: |
+        echo "ディスク解放前の準備"
+        echo "=============================================================================="
+        df -hT
+        echo "=============================================================================="
+
+    - name: Optimize Disk Space (ディスク容量の最適化)
+      uses: hugoalh/disk-space-optimizer-ghaction@v0.8.1
+      with:
+        operate_sudo: "True"
+        general_include: ".+"
+        general_exclude: |-
+          ^GCC$
+          ^G\+\+$
+          Clang
+          LLVM
+        docker_include: ".+"
+        docker_prune: "True"
+        docker_clean: "True"
+        apt_prune: "True"
+        apt_clean: "True"
+        homebrew_prune: "True"
+        homebrew_clean: "True"
+        npm_prune: "True"
+        npm_clean: "True"
+        os_swap: "True"
+
+    - name: Free Disk Space (ディスク空き容量の確保)
+      uses: easimon/maximize-build-space@master
+      with: 
+        root-reserve-mb: 8192
+        swap-size-mb: 1
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
+
+    - name: Check Server Performance (サーバー性能の確認)
+      run: |
+        echo "⚠️注意⚠️"
+        echo "サーバーのリソースは有限です。プラグインの過剰な選択はCPU高負荷の原因となります。"
+        echo -e "既知のCPUモデル（降順）: 7763，8370C，8272CL，8171M，E5-2673\n"
+        echo "-------------------------CPU 情報---------------------------"
+        echo "CPUの物理数  : $(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo "CPUコア数    : $(nproc)"
+        echo -e "CPUモデル情報:$(cat /proc/cpuinfo | grep -m1 name | awk -F: '{print $2}')\n"
+        echo "------------------------メモリ情報--------------------------"
+        echo "メモリの詳細:"
+        echo -e "$(sudo lshw -short -C memory | grep GiB)\n"
+        echo "---------------------ハードディスク情報---------------------"
+        echo "ディスク容量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+
+    - name: Initialize Environment (環境の初期化)
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E apt -yqq update
+        sudo -E apt -yqq full-upgrade
+        sudo -E apt -yqq autoremove --purge
+        sudo -E apt -yqq autoclean
+        sudo -E apt -yqq clean
+        sudo -E apt -yqq install zip rename dos2unix libfuse-dev
+        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        sudo -E systemctl daemon-reload
+        sudo timedatectl set-timezone "$TZ"
+        sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
+
+    - name: Setup Git Credentials (Git認証情報の設定)
+      run: |
+        git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
+        
+    - name: Clone Source Code (ソースコードのクローン)
+      working-directory: ./
+      run: |
+        df -hT $PWD
+        git clone $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD openwrt
+
+        # Remove China Mirrors (中国国内ミラーの削除)
+        PROJECT_MIRRORS_FILE="scripts/projectsmirrors.json"
+          if [ -f "$PROJECT_MIRRORS_FILE" ]; then
+            sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
+          fi
+
+    - name: Cache Toolchain (ツールチェーンのキャッシュ)
+      uses: HiGarfield/cachewrtbuild@main
+      with:
+        ccache: true
+        mixkey: MT7981b-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]
+        prefix: ${{ github.workspace }}/openwrt
+
+    - name: Update & Install Feeds (フィードの更新とインストール)
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_PATCHES }}
+        ${{ secrets.ADD_EXTRA_SOURCE }}
+        ./scripts/feeds update -a
+        rm -rf feeds/packages/lang/golang
+        git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
+        ./scripts/feeds install -a
+        ./scripts/feeds install -a
+
+    - name: Load Custom Configuration (カスタム設定の読み込み)
+      working-directory: ./openwrt
+      id: loadconfig
+      run: |
+        ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_PROFILE }}
+        rm -rf files
+        ${{ secrets.PONLY2410_K66_REPO_DIFF }}
+        ${{ secrets.ARGON_THEME_CMCC }}
+
+    - name: Download Packages (パッケージのダウンロード)
+      if: steps.loadconfig.outcome == 'success' && !cancelled()
+      working-directory: ./openwrt
+      id: package
+      run: |
+        make defconfig
+        make download -j8
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: Compile Firmware (ファームウェアのコンパイル)
+      working-directory: ./openwrt
+      id: compile
+      run: |
+        echo -e "$(nproc) thread compile"
+        make -j$(($(nproc) + 1)) || make -j1 V=s
+        echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: Update Variables (変数の更新)
+      run: |
+        echo "OUTPUT_FILE=${OUTPUT_FILE}_${FILE_DATE}" >> $GITHUB_ENV
+
+    - name: Check Disk Usage (ディスク使用量の確認)
+      if: (!cancelled())
+      run: df -hT
+
+    - name: Notify Compilation Error (コンパイルエラーの通知)
+      if: steps.compile.outcome != 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
+      env:
+        INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
+        INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
+        INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
+        INPUT_WENSHUSHU: ${{ github.event.inputs.upload_wenshushu }}
+        SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
+        SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
+      run: |
+        if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
+            STAT_RESTORE="✅"
+        else
+            STAT_RESTORE="⏺️"
+        fi
+        if [[ "$INPUT_ARTIFACT" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_firmware"* ]]; then
+            STAT_ARTIFACT="✅"
+        else
+            STAT_ARTIFACT="⏺️"
+        fi
+        if [[ "$INPUT_RELEASE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_release"* ]]; then
+            STAT_RELEASE="✅"
+        else
+            STAT_RELEASE="⏺️"
+        fi
+        if [[ "$INPUT_WENSHUSHU" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_wenshushu"* ]]; then
+            STAT_WENSHUSHU="✅"
+        else
+            STAT_WENSHUSHU="⏺️"
+        fi
+        MSG="❌ ビルドが失敗しました！ ❌"
+        MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•🖥️対応機種:%0A　%20　${DEVICE_NAME}"
+        MSG="${MSG}%0A•💿容量仕様:%0A　%20　${TARGET_DISK}"
+        MSG="${MSG}%0A•🐧カーネル:%0A　%20　${KERNEL_VERS}"
+        MSG="${MSG}%0A•👤ソース名:%0A　%20　${SOURCE_CODE}"
+        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${SOURCE_TREE}"
+        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${SOURCE_HEAD}"
+
+        MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
+        MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
+        MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
+        MSG="${MSG}%0A•☁️文氏転送:　%20　${STAT_WEN}"
+        
+        MSG="${MSG}%0A%0A＝＝＝＝  エ ラ ー 情 報   ＝＝＝＝"
+        MSG="${MSG}%0A•❌失敗時刻:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')"
+        MSG="${MSG}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝"
+
+        FINAL_MSG=$(echo "$MSG" | sed 's/ /%20/g')
+
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage" \
+          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d text="${FINAL_MSG}"
+
+    - name: Organize Files (ファイルの整理)
+      id: organize
+      if: steps.compile.outcome == 'success' && !cancelled()
+      run: |
+        cd openwrt/bin/targets/*/*
+        ls | grep -v *sysupgrade.bin | xargs rm -rdf
+        mv *.bin ${{ env.OUTPUT_FILE }}.bin
+        sha512sums ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILE }}.bin
+        ${{ secrets.ACCESS_REPACKAGE }} ${{ env.OUTPUT_FILE }}.bin
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+
+    - name: Upload to Artifacts (Artifactに保存)
+      if: steps.organize.outcome == 'success' && (github.event.inputs.upload_firmware == 'true' || contains(github.event.action, 'upload_firmware')) && !cancelled()
+      uses: actions/upload-artifact@main
+      with:
+        name: ${{ env.OUTPUT_FILE }}
+        path: ${{ env.FIRMWARE }}
+
+    - name: Upload to Release (Releaseに公開)
+      if: steps.organize.outcome == 'success' && (github.event.inputs.upload_release == 'true' || contains(github.event.action, 'upload_release')) && !cancelled()
+      uses: actions/github-script@v7
+      env:
+        REPO_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
+        REPO_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
+        GITHUB_TOKEN: ${{ env.GH_TOKEN }}
+      with:
+        github-token: ${{ env.GH_TOKEN }}
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          const { owner, repo } = context.repo;
+
+          const env = process.env; 
+          
+          console.log(`ℹ️ Target: ${env.DEVICE_NAME}, Date: ${env.FILE_DATE}`);
+
+          const tagName = `${env.FILE_DATE}`;
+          const releaseName = `${env.TARGET_CHIP}_${env.DEVICE_NAME}_${env.TARGET_DISK}_${env.KERNEL_VERS}_${env.FILE_DATE}`;
+
+          const body = `
+          **本ファームウェアは、CPU「${env.TARGET_CHIP}」搭載のモデル「${env.DEVICE_NAME}」✅ ${env.TARGET_DISK} ✅専用です。**
+          ### 📒「${env.SOURCE_CODE}」のソースコードを基にビルドされました。
+          - 🖥️ 対応機種: ${env.DEVICE_NAME}
+          - 💿 容量仕様: ${env.TARGET_DISK}
+          - 🐧 カーネル: ${env.KERNEL_VERS}
+          - 👤 ソース名: ${env.SOURCE_CODE}
+          - 🌲 ソース元: ${env.REPO_TREE}
+          - 🌿 ブランチ: ${env.REPO_HEAD}
+          - 🔗 管理ＩＰ: 192.168.***.1 または ${env.SOURCE_CODE}.lan
+          - 🛡️ 初期パス: ********
+          ### ⚠️ 免責事項 ⚠️
+          - ‼️ **本ファームウェアは、個人利用を目的とした非公式のカスタマイズ版です。**
+          - ⛔️ **強制フラッシュ等でデバイスが破損した場合、本リポジトリは一切の責任を負いません。自己責任で使用してください。**
+          `;
+
+          let release_id;
+          try {
+            console.log(`🆕 Creating Release: ${tagName}`);
+            const { data: newRelease } = await github.rest.repos.createRelease({
+              owner, repo,
+              tag_name: tagName,
+              target_commitish: context.sha,
+              name: releaseName,
+              body: body.trim(),
+              draft: false,
+              prerelease: false,
+              generate_release_notes: false
+            });
+            release_id = newRelease.id;
+          } catch (e) {
+             console.log(`⚠️ Create failed: ${e.message}`);
+             throw e;
+          }
+
+          const firmDir = env.FIRMWARE;
+          if (fs.existsSync(firmDir)) {
+            const files = fs.readdirSync(firmDir);
+            for (const file of files) {
+              const filePath = path.join(firmDir, file);
+              if (fs.lstatSync(filePath).isFile()) {
+                console.log(`⬆️ Uploading: ${file}`);
+                try {
+                  await github.rest.repos.uploadReleaseAsset({
+                    owner, repo,
+                    release_id: release_id,
+                    name: file,
+                    data: fs.readFileSync(filePath)
+                  });
+                } catch (e) { console.error(`❌ Upload failed: ${e.message}`); }
+              }
+            }
+          }
+
+    - name: Upload to wenshushu (ウェンおじさんにアップロードする)
+      if: steps.compile.outcome == 'success' && steps.organize.outcome == 'success' && (github.event.inputs.upload_wenshushu == 'true' || contains(github.event.action, 'upload_wenshushu')) && !cancelled()
+      working-directory: ./openwrt
+      run: |
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer wss -s -p 16 -t 600 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
+        WENSHUSHU=$(cat wenshushu.log | grep 'Manage Link:' | cut -d' ' -f3-)
+        echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
+
+    - name: 📢 Final Report & TG Notify (総合ステータス通知)
+      if: steps.organize.outcome == 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
+      env:
+        INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
+        INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
+        INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
+        INPUT_WENSHUSHU: ${{ github.event.inputs.upload_wenshushu }}
+        SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
+        SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
+        WENSHUSHU_URL: ${{ env.WENSHUSHU }}
+      run: |
+        if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
+            STAT_RESTORE="✅"
+        else
+            STAT_RESTORE="⏺️"
+        fi
+        if [[ "$INPUT_ARTIFACT" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_firmware"* ]]; then
+            STAT_ARTIFACT="✅"
+        else
+            STAT_ARTIFACT="⏺️"
+        fi
+        if [[ "$INPUT_RELEASE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_release"* ]]; then
+            STAT_RELEASE="✅"
+        else
+            STAT_RELEASE="⏺️"
+        fi
+        if [[ -n "$WENSHUSHU_URL" ]]; then
+            STAT_WEN="✅"
+            WEN_MSG="・🧙🏼‍♂️文氏転送:%0A　%20　$WENSHUSHU_URL"
+        elif [[ "$INPUT_WENSHUSHU" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_wenshushu"* ]]; then
+            STAT_WEN="❌ (失敗)" 
+            WEN_MSG=""
+        else
+            STAT_WEN="⏺️"
+            WEN_MSG=""
+        fi
+
+        MSG="✅ビルドが正常に完了しました！✅"
+        MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•🖥️対応機種:%0A　%20　${DEVICE_NAME}"
+        MSG="${MSG}%0A•💿容量仕様:%0A　%20　${TARGET_DISK}"
+        MSG="${MSG}%0A•🐧カーネル:%0A　%20　${KERNEL_VERS}"
+        MSG="${MSG}%0A•👤ソース名:%0A　%20　${SOURCE_CODE}"
+        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${SOURCE_TREE}"
+        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${SOURCE_HEAD}"
+
+        MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
+        MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
+        MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
+        MSG="${MSG}%0A•☁️文氏転送:　%20　${STAT_WEN}"
+        
+        MSG="${MSG}%0A%0A＝＝＝＝＝  下 載 信 息 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•📦ファイル:%0A　%20　${OUTPUT_FILE}"
+
+        if [[ -n "$WEN_MSG" ]]; then
+             MSG="${MSG}%0A${WEN_MSG}"
+        fi
+        
+        MSG="${MSG}%0A＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝"
+
+        FINAL_MSG=$(echo "$MSG" | sed 's/ /%20/g')
+
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_KEY }}/sendMessage" \
+          -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+          -d text="${FINAL_MSG}"
+
+    - name: Delete Old Workflows (古いワークフローの削除)
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ env.GH_TOKEN }}
+        script: |
+          const { owner, repo } = context.repo;
+          const currentRunId = context.runId;
+          
+          const runs = await github.rest.actions.listWorkflowRunsForRepo({
+            owner, repo, per_page: 100
+          });
+
+          const workflowGroups = {};
+          for (const run of runs.data.workflow_runs) {
+            if (!workflowGroups[run.workflow_id]) workflowGroups[run.workflow_id] = [];
+            workflowGroups[run.workflow_id].push(run);
+          }
+
+          for (const [id, list] of Object.entries(workflowGroups)) {
+            list.sort((a, b) => b.id - a.id);
+            let foundSuccess = false;
+
+            for (const run of list) {
+              if (run.id === currentRunId) continue;
+              if (run.status !== 'completed') continue;
+
+              if (!foundSuccess && run.conclusion === 'success') {
+                console.log(`✅ Keep last success: ${run.name} (#${run.run_number})`);
+                foundSuccess = true;
+                continue;
+              }
+              try {
+                await github.rest.actions.deleteWorkflowRun({ owner, repo, run_id: run.id });
+                console.log(`👋 Delete: ${run.name} (#${run.run_number})`);
+              } catch (e) {}
+            }
+          }
+
+    - name: Delete Old Releases (古いリリースの削除)
+      uses: actions/github-script@v7
+      if: steps.organize.outcome == 'success' && (github.event.inputs.upload_release == 'true' || contains(github.event.action, 'upload_release')) && !cancelled()
+      with:
+        github-token: ${{ env.GH_TOKEN }}
+        script: |
+          const keep_latest = 3;
+          const { owner, repo } = context.repo;
+          const { data: releases } = await github.rest.repos.listReleases({ owner, repo, per_page: 100 });
+          
+          for (const release of releases.slice(keep_latest)) {
+            console.log(`👋 Deleting Release: ${release.tag_name}`);
+            await github.rest.repos.deleteRelease({ owner, repo, release_id: release.id });
+            try {
+              await github.rest.git.deleteRef({ owner, repo, ref: `tags/${release.tag_name}` });
+            } catch (e) {}
+          }
+    
