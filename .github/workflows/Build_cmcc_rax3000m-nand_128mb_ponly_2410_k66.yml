@@ -346,6 +346,7 @@ jobs:
       if: steps.compile.outcome == 'success' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
+        ls
         ls | grep -v *sysupgrade.itb | xargs rm -rdf
         mv *.itb ${{ env.OUTPUT_FILE }}.itb
         sha512sums ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILE }}.itb
