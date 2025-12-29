@@ -14,6 +14,10 @@ name: Build cmcc_rax3000m-nand 128mb ponly 24.10 kernel 6.6 actions.
 on:
   workflow_dispatch:
     inputs:
+      add_quickstart:
+        description: 'Install QucikStart    🇯🇵 QucikStartに增加'
+        type: boolean
+        default: false
       telegram_notify:
         description: 'Telegram Notification 🇯🇵 Telegram通知'
         type: boolean
@@ -251,6 +255,17 @@ jobs:
       id: loadconfig
       run: |
         ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_PROFILE }}
+        if [ "${{ github.event.inputs.add_quickstart }}" = "true" ]; then
+            echo "QuickStartプラグインを追加中..."
+
+            cat >> .config <<EOF
+CONFIG_PACKAGE_quickstart=y
+CONFIG_PACKAGE_luci-app-quickstart=y
+CONFIG_PACKAGE_luci-i18n-quickstart-zh-cn=y
+EOF
+        else
+            echo "QuickStartプラグインのインストールをスキップします。"
+        fi
         rm -rf files
         ${{ secrets.PONLY2410_K66_REPO_DIFF }}
         ${{ secrets.ARGON_THEME_CMCC }}
@@ -289,6 +304,7 @@ jobs:
     - name: Notify Compilation Error (コンパイルエラーの通知)
       if: steps.compile.outcome != 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
       env:
+        INPUT_QUICKSTART: ${{ github.event.inputs.add_quickstart }}
         INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
         INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
         INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
@@ -296,6 +312,11 @@ jobs:
         SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
         SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
       run: |
+        if [[ "$INPUT_QUICKSTART" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"add_quickstart"* ]]; then
+            STAT_QUICKSTART="✅"
+        else
+            STAT_QUICKSTART="⏺️"
+        fi
         if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
             STAT_RESTORE="✅"
         else
@@ -326,6 +347,7 @@ jobs:
         MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${SOURCE_HEAD}"
 
         MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•🧩機能追加:　%20　${STAT_QUICKSTART}"
         MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
         MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
         MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
@@ -448,14 +470,19 @@ jobs:
     - name: 📢 Final Report & TG Notify (総合ステータス通知)
       if: steps.organize.outcome == 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
       env:
+        INPUT_QUICKSTART: ${{ github.event.inputs.add_quickstart }}
         INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
         INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
         INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
         INPUT_WENSHUSHU: ${{ github.event.inputs.upload_wenshushu }}
         SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
         SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
-        WENSHUSHU_URL: ${{ env.WENSHUSHU }}
       run: |
+        if [[ "$INPUT_QUICKSTART" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"add_quickstart"* ]]; then
+            STAT_QUICKSTART="✅"
+        else
+            STAT_QUICKSTART="⏺️"
+        fi
         if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
             STAT_RESTORE="✅"
         else
@@ -492,6 +519,7 @@ jobs:
         MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${SOURCE_HEAD}"
 
         MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•🧩機能追加:　%20　${STAT_QUICKSTART}"
         MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
         MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
         MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
