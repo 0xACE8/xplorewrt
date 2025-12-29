@@ -257,12 +257,9 @@ jobs:
         ${{ secrets.CMCC_RAX3000M_NAND_PONLY2410_K66_PROFILE }}
         if [ "${{ github.event.inputs.add_quickstart }}" = "true" ]; then
             echo "QuickStartプラグインを追加中..."
-
-            cat >> .config <<EOF
-CONFIG_PACKAGE_quickstart=y
-CONFIG_PACKAGE_luci-app-quickstart=y
-CONFIG_PACKAGE_luci-i18n-quickstart-zh-cn=y
-EOF
+            echo 'CONFIG_PACKAGE_quickstart=y' >> .config
+            echo 'CONFIG_PACKAGE_luci-app-quickstart=y' >> .config
+            echo 'CONFIG_PACKAGE_luci-i18n-quickstart-zh-cn=y' >> .config
         else
             echo "QuickStartプラグインのインストールをスキップします。"
         fi
