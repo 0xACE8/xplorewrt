@@ -18,8 +18,8 @@ on:
         description: 'Restore Configuration 🇯🇵 設定を復元'
         type: boolean
         default: false
-      telegram_notify:
-        description: 'Telegram Notification 🇯🇵 Telegram通知'
+      boost_wifi_5g:
+        description: 'Boost Wi-Fi 5G Signal 🇯🇵 5G信号の増幅'
         type: boolean
         default: false
       upload_firmware:
@@ -27,50 +27,70 @@ on:
         type: boolean
         default: false
       upload_release:
-        description: 'Upload to Release　　 🇯🇵 Releaseに公開'
+        description: 'Upload to Releases　　🇯🇵 Releaseに公開'
         type: boolean
         default: false
+      telegram_notify:
+        description: 'Telegram Notification 🇯🇵 Telegram通知'
+        type: boolean
+        default: true
       upload_wenshushu:
         description: 'Upload to WENSHUSHU　 🇯🇵 文叔叔に転送'
         type: boolean
         default: false
-#  schedule:
-#    - cron: '0 19 * * 0'
+      clean_ccache:
+        description: 'Clean all old CCACHE　🇯🇵 CCACHEに削除'
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 19 * * 0'
+    
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   # annawrt 2410
-  PONLY2410_K66_REPO_LINK:                  ${{ secrets.PONLY2410_K66_REPO_LINK }}
-  PONLY2410_K66_REPO_TREE:                  ${{ secrets.PONLY2410_K66_REPO_TREE }}
-  PONLY2410_K66_REPO_HEAD:                  ${{ secrets.PONLY2410_K66_REPO_HEAD }}
-  PONLY2410_K66_REPO_DIFF:                  ${{ secrets.PONLY2410_K66_REPO_DIFF }}
+  PONLY2410_K66_REPO_LINK:                 ${{ secrets.PONLY2410_K66_REPO_LINK }}
+  PONLY2410_K66_REPO_TREE:                 ${{ secrets.PONLY2410_K66_REPO_TREE }}
+  PONLY2410_K66_REPO_HEAD:                 ${{ secrets.PONLY2410_K66_REPO_HEAD }}
+  PONLY2410_K66_REPO_DIFF:                 ${{ secrets.PONLY2410_K66_REPO_DIFF }}
   # cmcc-xr30-emmc
-  CUDY_TR3000_128MB_PONLY2410_K66_PATCHES:  ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PATCHES }}
-  CUDY_TR3000_128MB_PONLY2410_K66_PROFILE:  ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PROFILE }}
-  CUDY_TR3000_COMON_PONLY2410_K66_ARCHIVE:  ${{ secrets.CUDY_TR3000_COMON_PONLY2410_K66_ARCHIVE }}
+  CUDY_TR3000_128MB_PONLY2410_K66_PATCHES: ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PATCHES }}
+  CUDY_TR3000_128MB_PONLY2410_K66_PROFILE: ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PROFILE }}
+  CUDY_TR3000_128MB_PONLY2410_K66_ARCHIVE: ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_ARCHIVE }}
   # token
-  GH_TOKEN:                                 ${{ secrets.ACCESS_TOKEN }}
-  ACCESS_TOKEN:                             ${{ secrets.ACCESS_TOKEN }}
+  GH_TOKEN:                                ${{ secrets.ACCESS_TOKEN }}
+  ACCESS_TOKEN:                            ${{ secrets.ACCESS_TOKEN }}
   # feeds source
-  ADD_EXTRA_SOURCE:                         ${{ secrets.ADD_EXTRA_SOURCE }}
+  ADD_EXTRA_SOURCE:                        ${{ secrets.ADD_EXTRA_SOURCE }}
   # check sha512sum
-  ACCESS_SHA512SUM:                         ${{ secrets.ACCESS_SHA512SUM }}
-  ACCESS_REPACKAGE:                         ${{ secrets.ACCESS_REPACKAGE }}
+  ACCESS_SHA512SUM:                        ${{ secrets.ACCESS_SHA512SUM }}
+  ACCESS_REPACKAGE:                        ${{ secrets.ACCESS_REPACKAGE }}
   # luci & packages repo
-  PLUGIN_REPO_SLUG:                         ${{ secrets.PLUGIN_REPO_SLUG }}
-  PLUGIN_REPO_HEAD:                         ${{ secrets.PLUGIN_REPO_HEAD }}
-  PLUGIN_REPO_FLOW:                         ${{ secrets.PLUGIN_REPO_FLOW }}
+  PLUGIN_REPO_SLUG:                        ${{ secrets.PLUGIN_REPO_SLUG }}
+  PLUGIN_REPO_HEAD:                        ${{ secrets.PLUGIN_REPO_HEAD }}
+  PLUGIN_REPO_FLOW:                        ${{ secrets.PLUGIN_REPO_FLOW }}
   # cmcc color sytle for argon
-  ARGON_THEME_CUDY:                         ${{ secrets.ARGON_THEME_CUDY }}
+  ARGON_THEME_CUDY:                        ${{ secrets.ARGON_THEME_CUDY }}
   # telegram bot
-  TELEGRAM_BOT_KEY:                         ${{ secrets.TELEGRAM_BOT_KEY }}
-  TELEGRAM_CHAT_ID:                         ${{ secrets.TELEGRAM_CHAT_ID }}
+  TELEGRAM_BOT_KEY:                        ${{ secrets.TELEGRAM_BOT_KEY }}
+  TELEGRAM_CHAT_ID:                        ${{ secrets.TELEGRAM_CHAT_ID }}
+  # input status
+  INPUT_RESTORE:                           ${{ github.event.inputs.restore_config }}
+  INPUT_BOOST5G:                           ${{ github.event.inputs.boost_wifi_5g }}
+  INPUT_ARTIFACT:                          ${{ github.event.inputs.upload_firmware }}
+  INPUT_RELEASE:                           ${{ github.event.inputs.upload_release }}
+  INPUT_WENSHUSHU:                         ${{ github.event.inputs.upload_wenshushu }}
+  INPUT_CLEANCACHE:                        ${{ github.event.inputs.clean_ccache }}
   # hardware & repo info
-  DEVICE_NAME:                              CUDY_TR3000-v1
-  TARGET_CHIP:                              mt7981b
-  TARGET_DISK:                              SPI_NAND_128MB
-  SOURCE_CODE:                              padavanonly
-  KERNEL_VERS:                              KERNEL_6.6.95
-  OUTPUT_FILE:                              xplorewrt-24.10-k6.6-mt7981b-cudy_tr3000-v1-128mb-sysupgrade
+  DEVICE_NAME:                             CUDY_TR3000-v1
+  TARGET_CHIP:                             mt7981b
+  TARGET_DISK:                             SPI_NAND_128MB
+  SOURCE_CODE:                             padavanonly
+  KERNEL_VERS:                             KERNEL_6.6.95
+  OUTPUT_FILE:                             xplorewrt-24.10-k6.6-mt7981b-cudy_tr3000-v1-128mb-sysupgrade
   TZ: "Asia/Tokyo"
 
 jobs:
@@ -83,7 +103,7 @@ jobs:
     steps:
     - name: Sync and Wait for Plugin Repo (プラグインリポジトリの同期と待機)
       run: |
-        echo "🔍 Checking last successful sync time..."
+        echo "Checking last successful sync time..."
         
         LAST_RUN_TIME=$(gh run list --workflow "$PLUGIN_REPO_FLOW" --repo "$PLUGIN_REPO_SLUG" --status success --limit 1 --json updatedAt --jq '.[0].updatedAt')
         DO_SYNC="true"
@@ -104,15 +124,15 @@ jobs:
         fi
 
         if [ "$DO_SYNC" == "true" ]; then
-          echo "🚀 Triggering workflow..."
+          echo "Triggering workflow..."
 
           if ! gh workflow run "$PLUGIN_REPO_FLOW" --repo "$PLUGIN_REPO_SLUG" --ref "$PLUGIN_REPO_HEAD"; then
             echo "❌ Error: Failed to trigger the workflow."
             exit 1
           fi
             
-          echo "🕵️‍♂️ Waiting for Run ID..."
-          echo "⏳ Max wait time: 10 minutes (60 attempts x 10s)"
+          echo "Waiting for Run ID..."
+          echo "Max wait time: 10 minutes (60 attempts x 10s)"
             
           FOUND_ID=""
           
@@ -135,12 +155,12 @@ jobs:
             exit 1
           fi
             
-          echo "👀 Waiting sync..."
+          echo "Waiting sync..."
 
           gh run watch "$FOUND_ID" --repo "$PLUGIN_REPO_SLUG" --exit-status
-          echo "🍽️ Plugin sync complete"
+          echo "Plugin sync complete"
         else
-          echo "😴 Skipping sync to save resources (Recently synced)."
+          echo "Skipping sync to save resources (Recently synced)."
         fi
 
     - name: Checkout (チェックアウト)
@@ -211,9 +231,8 @@ jobs:
         sudo -E apt -yqq autoremove --purge
         sudo -E apt -yqq autoclean
         sudo -E apt -yqq clean
-        sudo -E apt -yqq install zip rename dos2unix libfuse-dev
+        sudo -E apt -yqq install zip rename dos2unix libfuse-dev mold cargo
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-        sudo -E apt -yqq install cargo
         rustup target add aarch64-unknown-linux-musl
         sudo -E systemctl daemon-reload
         sudo timedatectl set-timezone "$TZ"
@@ -222,12 +241,13 @@ jobs:
     - name: Setup Git Credentials (Git認証情報の設定)
       run: |
         git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
+        git config --global core.compression 0
         
     - name: Clone Source Code (ソースコードのクローン)
       working-directory: ./
       run: |
         df -hT $PWD
-        git clone $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD openwrt
+        git clone --depth 1 $PONLY2410_K66_REPO_LINK -b $PONLY2410_K66_REPO_HEAD openwrt
 
         # Remove China Mirrors (中国国内ミラーの削除)
         PROJECT_MIRRORS_FILE="scripts/projectsmirrors.json"
@@ -235,12 +255,35 @@ jobs:
             sed -i '/.cn\//d; /tencent/d; /aliyun/d' "$PROJECT_MIRRORS_FILE"
           fi
 
+    - name: Prepare Cache Key (キャッシュキーの准备)
+      run: |
+        echo "CACHE_MONTH=$(date +%Y%m)" >> $GITHUB_ENV
+
+        if [ "${{ github.event.inputs.clean_cache }}" = "true" ]; then
+            echo "CLEAN_MARK=_clean_$(date +%s)" >> $GITHUB_ENV
+        else
+            echo "CLEAN_MARK=" >> $GITHUB_ENV
+        fi
+
     - name: Cache Toolchain (ツールチェーンのキャッシュ)
       uses: HiGarfield/cachewrtbuild@main
       with:
         ccache: true
-        mixkey: MT7981b-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]
+        mixkey: MT7981b-[${{ env.CACHE_MONTH }}]-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
         prefix: ${{ github.workspace }}/openwrt
+
+    - name: Cache dl Directory (dlディレクトリのキャッシュ)
+      uses: actions/cache@v3
+      with:
+        path: openwrt/dl
+        key: ${{ runner.os }}-openwrt-dl-v3-${{ hashFiles('**/feeds.conf.default') }}
+        restore-keys: |
+          ${{ runner.os }}-openwrt-dl-v3-
+
+    - name: Surgical Clean Go Cache (Goキャッシュの物理削除)
+      run: |
+        rm -rf openwrt/dl/go-mod-cache
+        mkdir -p openwrt/dl/go-mod-cache
 
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
@@ -258,6 +301,7 @@ jobs:
       id: loadconfig
       run: |
         ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_PROFILE }}
+        rm -rf files
         ${{ secrets.PONLY2410_K66_REPO_DIFF }}
         ${{ secrets.ARGON_THEME_CUDY }}
 
@@ -265,14 +309,7 @@ jobs:
       if: steps.loadconfig.outcome == 'success' && (github.event.inputs.restore_config == 'true' || contains(github.event.action, 'restore_config')) && !cancelled()
       working-directory: ./openwrt
       run: |
-        rm -rf files
-        ${{ secrets.CUDY_TR3000_COMON_PONLY2410_K66_ARCHIVE }}
-
-    - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
-      if: steps.loadconfig.outcome == 'success' && !cancelled()
-      working-directory: ./openwrt
-      run: |
-        ${{ secrets.BOOST_5G_TO_25DBM }}
+        ${{ secrets.CUDY_TR3000_128MB_PONLY2410_K66_ARCHIVE }}
 
     - name: Download Packages (パッケージのダウンロード)
       if: steps.loadconfig.outcome == 'success' && !cancelled()
@@ -284,12 +321,18 @@ jobs:
         find dl -size -1024c -exec ls -l {} \;
         find dl -size -1024c -exec rm -f {} \;
 
+    - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
+      if: github.event.inputs.boost_wifi_5g == 'true' && steps.loadconfig.outcome == 'success' &&  !cancelled()
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets.BOOST_5G_TO_25DBM }}
+
     - name: Compile Firmware (ファームウェアのコンパイル)
       working-directory: ./openwrt
       id: compile
       run: |
         echo -e "$(nproc) thread compile"
-        make -j$(($(nproc) + 1)) || make -j1 V=s
+        LDFLAGS="-fuse-ld=mold" make -j$(($(nproc) + 1)) || make -j1 V=s
         echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
     - name: Update Variables (変数の更新)
@@ -302,18 +345,16 @@ jobs:
 
     - name: Notify Compilation Error (コンパイルエラーの通知)
       if: steps.compile.outcome != 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
-      env:
-        INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
-        INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
-        INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
-        INPUT_WENSHUSHU: ${{ github.event.inputs.upload_wenshushu }}
-        SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
-        SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
       run: |
         if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
             STAT_RESTORE="✅"
         else
             STAT_RESTORE="⏺️"
+        fi
+        if [[ "$INPUT_BOOST5G" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"boost_wifi_5g"* ]]; then
+            STAT_BOOST5G="✅"
+        else
+            STAT_BOOST5G="⏺️"
         fi
         if [[ "$INPUT_ARTIFACT" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_firmware"* ]]; then
             STAT_ARTIFACT="✅"
@@ -330,20 +371,27 @@ jobs:
         else
             STAT_WENSHUSHU="⏺️"
         fi
+        if [[ "$INPUT_CLEANCACHE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"clean_ccache"* ]]; then
+            STAT_CLEANCACHE="✅"
+        else
+            STAT_CLEANCACHE="⏺️"
+        fi
         MSG="❌ ビルドが失敗しました！ ❌"
         MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
         MSG="${MSG}%0A•🖥️対応機種:%0A　%20　${DEVICE_NAME}"
         MSG="${MSG}%0A•💿容量仕様:%0A　%20　${TARGET_DISK}"
         MSG="${MSG}%0A•🐧カーネル:%0A　%20　${KERNEL_VERS}"
         MSG="${MSG}%0A•👤ソース名:%0A　%20　${SOURCE_CODE}"
-        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${SOURCE_TREE}"
-        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${SOURCE_HEAD}"
+        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${PONLY2410_K66_REPO_TREE}"
+        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${PONLY2410_K66_REPO_HEAD}"
 
         MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
         MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
+        MSG="${MSG}%0A•🛜信号増幅:　%20　${STAT_BOOST5G}"
         MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
         MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
         MSG="${MSG}%0A•☁️文氏転送:　%20　${STAT_WEN}"
+        MSG="${MSG}%0A•🧹一時消去:　%20　${STAT_CLEANCACHE}"
         
         MSG="${MSG}%0A%0A＝＝＝＝  エ ラ ー 情 報   ＝＝＝＝"
         MSG="${MSG}%0A•❌失敗時刻:%0A　%20　$(date +'%Y年%m月%d日_%H時%M分')"
@@ -360,10 +408,12 @@ jobs:
       if: steps.compile.outcome == 'success' && !cancelled()
       run: |
         cd openwrt/bin/targets/*/*
-        ls | grep -v *sysupgrade.bin | xargs rm -rdf
-        mv *.bin ${{ env.OUTPUT_FILE }}.bin
-        sha512sums ${{ secrets.ACCESS_SHA512SUM }} sha512sums ${{ env.OUTPUT_FILE }}.bin
-        ${{ secrets.ACCESS_REPACKAGE }} ${{ env.OUTPUT_FILE }}.bin
+        FIRMWARE_FILE=$(ls *sysupgrade.* 2>/dev/null | head -n 1)
+        EXT="${FIRMWARE_FILE##*.}"
+        ls | grep -v "$FIRMWARE_FILE" | xargs rm -rdf
+        mv "$FIRMWARE_FILE" "${{ env.OUTPUT_FILE }}.$EXT"
+        sha512sums ${{ secrets.ACCESS_SHA512SUM }} sha512sums "${{ env.OUTPUT_FILE }}.$EXT"
+        ${{ secrets.ACCESS_REPACKAGE }} "${{ env.OUTPUT_FILE }}.$EXT"
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
 
     - name: Upload to Artifacts (Artifactに保存)
@@ -448,30 +498,18 @@ jobs:
             }
           }
 
-    - name: Upload to wenshushu (ウェンおじさんにアップロードする)
-      if: steps.compile.outcome == 'success' && steps.organize.outcome == 'success' && (github.event.inputs.upload_wenshushu == 'true' || contains(github.event.action, 'upload_wenshushu')) && !cancelled()
-      working-directory: ./openwrt
-      run: |
-        curl -fsSL git.io/file-transfer | sh
-        ./transfer wss -s -p 16 -t 600 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
-        WENSHUSHU=$(cat wenshushu.log | grep 'Manage Link:' | cut -d' ' -f3-)
-        echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
-
-    - name: 📢 Final Report & TG Notify (総合ステータス通知)
+    - name: Final Report & TG Notify (総合ステータス通知)
       if: steps.organize.outcome == 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
-      env:
-        INPUT_RESTORE: ${{ github.event.inputs.restore_config }}
-        INPUT_ARTIFACT: ${{ github.event.inputs.upload_firmware }}
-        INPUT_RELEASE: ${{ github.event.inputs.upload_release }}
-        INPUT_WENSHUSHU: ${{ github.event.inputs.upload_wenshushu }}
-        SOURCE_TREE: ${{ secrets.PONLY2410_K66_REPO_TREE }}
-        SOURCE_HEAD: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
-        WENSHUSHU_URL: ${{ env.WENSHUSHU }}
       run: |
         if [[ "$INPUT_RESTORE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"restore_config"* ]]; then
             STAT_RESTORE="✅"
         else
             STAT_RESTORE="⏺️"
+        fi
+        if [[ "$INPUT_BOOST5G" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"boost_wifi_5g"* ]]; then
+            STAT_BOOST5G="✅"
+        else
+            STAT_BOOST5G="⏺️"
         fi
         if [[ "$INPUT_ARTIFACT" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_firmware"* ]]; then
             STAT_ARTIFACT="✅"
@@ -493,25 +531,31 @@ jobs:
             STAT_WEN="⏺️"
             WEN_MSG=""
         fi
-
-        MSG="✅ ビルドが正常に完了しました！ ✅"
+        if [[ "$INPUT_CLEANCACHE" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"clean_ccache"* ]]; then
+            STAT_CLEANCACHE="✅"
+        else
+            STAT_CLEANCACHE="⏺️"
+        fi
+        MSG="✅ビルドが正常に完了しました！✅"
         MSG="${MSG}%0A%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
-        MSG="${MSG}%0A•🖥️対応機種:%0A　%20　%20　${DEVICE_NAME}"
-        MSG="${MSG}%0A•💿容量仕様:%0A　%20　%20　${TARGET_DISK}"
-        MSG="${MSG}%0A•🐧カーネル:%0A　%20　%20　${KERNEL_VERS}"
-        MSG="${MSG}%0A•👤ソース名:%0A　%20　%20　${SOURCE_CODE}"
-        MSG="${MSG}%0A•🌲ソース元:%0A　%20　%20　${SOURCE_TREE}"
-        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　%20　${SOURCE_HEAD}"
+        MSG="${MSG}%0A•🖥️対応機種:%0A　%20　${DEVICE_NAME}"
+        MSG="${MSG}%0A•💿容量仕様:%0A　%20　${TARGET_DISK}"
+        MSG="${MSG}%0A•🐧カーネル:%0A　%20　${KERNEL_VERS}"
+        MSG="${MSG}%0A•👤ソース名:%0A　%20　${SOURCE_CODE}"
+        MSG="${MSG}%0A•🌲ソース元:%0A　%20　${PONLY2410_K66_REPO_TREE}"
+        MSG="${MSG}%0A•🌿ブランチ:%0A　%20　${PONLY2410_K66_REPO_HEAD}"
 
         MSG="${MSG}%0A%0A＝＝＝＝＝  状 態 一 覧 ＝＝＝＝＝＝"
         MSG="${MSG}%0A•⚙️設定復元:　%20　${STAT_RESTORE}"
+        MSG="${MSG}%0A•🛜信号増幅:　%20　${STAT_BOOST5G}"
         MSG="${MSG}%0A•💾構築成果:　%20　${STAT_ARTIFACT}"
         MSG="${MSG}%0A•🚀公開配信:　%20　${STAT_RELEASE}"
         MSG="${MSG}%0A•☁️文氏転送:　%20　${STAT_WEN}"
+        MSG="${MSG}%0A•🧹一時消去:　%20　${STAT_CLEANCACHE}"
         
         MSG="${MSG}%0A%0A＝＝＝＝＝  下 載 信 息 ＝＝＝＝＝＝"
-        MSG="${MSG}%0A•📦ファイル:%0A　%20　%20　${OUTPUT_FILE}"
-
+        MSG="${MSG}%0A•📦ファイル:%0A　%20　${OUTPUT_FILE}"
+        
         if [[ -n "$WEN_MSG" ]]; then
              MSG="${MSG}%0A${WEN_MSG}"
         fi
@@ -533,7 +577,7 @@ jobs:
           const currentRunId = context.runId;
           
           const runs = await github.rest.actions.listWorkflowRunsForRepo({
-            owner, repo, per_page: 100
+            owner, repo, per_page: 1
           });
 
           const workflowGroups = {};
@@ -568,7 +612,7 @@ jobs:
       with:
         github-token: ${{ env.GH_TOKEN }}
         script: |
-          const keep_latest = 3;
+          const keep_latest = 2;
           const { owner, repo } = context.repo;
           const { data: releases } = await github.rest.repos.listReleases({ owner, repo, per_page: 100 });
           
@@ -579,3 +623,4 @@ jobs:
               await github.rest.git.deleteRef({ owner, repo, ref: `tags/${release.tag_name}` });
             } catch (e) {}
           }
+    
