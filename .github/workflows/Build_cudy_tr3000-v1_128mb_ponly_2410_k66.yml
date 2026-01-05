@@ -498,6 +498,15 @@ jobs:
             }
           }
 
+    - name: Upload to wenshushu (ウェンおじさんにアップロードする)
+      if: steps.compile.outcome == 'success' && steps.organize.outcome == 'success' && (github.event.inputs.upload_wenshushu == 'true' || contains(github.event.action, 'upload_wenshushu')) && !cancelled()
+      working-directory: ./openwrt
+      run: |
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer wss -s -p 16 -t 600 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
+        WENSHUSHU=$(cat wenshushu.log | grep 'Manage Link:' | cut -d' ' -f3-)
+        echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
+
     - name: Final Report & TG Notify (総合ステータス通知)
       if: steps.organize.outcome == 'success' && (github.event.inputs.telegram_notify == 'true' || contains(github.event.action, 'telegram_notify')) && !cancelled()
       run: |
