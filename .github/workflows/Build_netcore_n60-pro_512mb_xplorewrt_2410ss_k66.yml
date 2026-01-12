@@ -9,15 +9,15 @@
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
-name: Build netcore_n60-pro 512mb xplorewrt 24.10 snapshot kernel 6.6.95 actions.
+name: Build cmcc_xr30-emmc annawrt 24.10 snapshot kernel 6.6.95 actions.
 
 on:
   workflow_dispatch:
     inputs:
-      restore_config:
-        description: 'Restore Configuration. 🇯🇵 設定を復元'
-        type: boolean
-        default: false
+      # restore_config:
+      #   description: 'Restore Configuration. 🇯🇵 設定を復元'
+      #   type: boolean
+      #   default: false
       # boost_wifi_5g:
       #   description: 'Boost Wi-Fi 5G Signal. 🇯🇵 5G信号の増幅'
       #   type: boolean
@@ -52,12 +52,12 @@ on:
     - cron: '0 0 1 * *'     # 每月 1 号 00:00 运行 (由于 Key 包含月份，会自动生成全新缓存)
     
 env:
-  # xplorewrt 2410
+  # annawrt 2410
   PONLY2410_K66_REPO_LINK:                    ${{ secrets.PONLY2410_K66_REPO_LINK }}
   PONLY2410_K66_REPO_TREE:                    ${{ secrets.PONLY2410_K66_REPO_TREE }}
   PONLY2410_K66_REPO_HEAD:                    ${{ secrets.PONLY2410_K66_REPO_HEAD }}
   PONLY2410_K66_REPO_DIFF:                    ${{ secrets.PONLY2410_K66_REPO_DIFF }}
-  # netcore_n60-pro 512mb
+  # cmcc-xr30-emmc
   NETCORE_N60PRO_512MB_PONLY2410_K66_PATCHES: ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_PATCHES }}
   NETCORE_N60PRO_512MB_PONLY2410_K66_PROFILE: ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_PROFILE }}
   # NETCORE_N60PRO_512MB_PONLY2410_K66_ARCHIVE: ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_ARCHIVE }}
@@ -159,8 +159,9 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo -E apt -yqq update
-        sudo -E apt -yqq install zip rename dos2unix libfuse-dev python3-netifaces libcrypt-dev libncurses5-dev
+        sudo -E apt -yqq install zip rename dos2unix libfuse-dev python3-netifaces libcrypt-dev libncurses5-dev cargo
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        rustup target add aarch64-unknown-linux-musl
         sudo timedatectl set-timezone "$TZ"
         sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
         git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
@@ -184,7 +185,7 @@ jobs:
         ccache: true
         toolchain: true
         skip: true
-        mixkey: MT7986a-[${{ env.CACHE_MONTH }}]-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
+        mixkey: MT7981b-[${{ env.CACHE_MONTH }}]-[${{ env.SOURCE_CODE }}]-[${{ secrets.PONLY2410_K66_REPO_TREE }}]-[${{ secrets.PONLY2410_K66_REPO_HEAD }}]-[${{ env.KERNEL_VERS }}]-[${{ env.CLEAN_MARK }}]
         prefix: ${{ github.workspace }}/openwrt
 
     - name: Cache dl Directory (dlディレクトリのキャッシュ)
@@ -351,8 +352,9 @@ jobs:
             WEN_MSG=""
         fi
       
-        STAT_LIST="•⚙️配置复元:　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
-        STAT_LIST="${STAT_LIST}•🛜信号增幅:　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
+        # STAT_LIST="•⚙️配置复元:　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
+        # STAT_LIST="${STAT_LIST}•🛜信号增幅:　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
+        STAT_LIST="•🛜信号增幅:　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
         STAT_LIST="${STAT_LIST}•💾构建成果:　%20　$(get_stat "${{ github.event.inputs.upload_firmware }}")%0A"
         STAT_LIST="${STAT_LIST}•🚀公开配信:　%20　$(get_stat "${{ github.event.inputs.upload_release }}")%0A"
         STAT_LIST="${STAT_LIST}•☁️文氏転送:　%20　${STAT_WEN}%0A"
@@ -395,7 +397,7 @@ jobs:
         repository: ${{ github.repository }}
         retain_days: 0
         keep_minimum_runs: 1
-        delete_workflow_pattern: Build_netcore_n60-pro_512mb_ponly_2410ss_k66.yml
+        delete_workflow_pattern: Build_cmcc_xr30-emmc_annawrt-24.10ss-k6.6.yml
  
     - name: Delete Old Releases (古いリリースの削除)
       if: steps.compile.outcome == 'success' && env.INPUT_RELEASE == 'true'
