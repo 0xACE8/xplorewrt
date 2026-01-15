@@ -9,7 +9,7 @@
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
-name: Build netcore_n60-pro_512mb xplorewrt 24.10 snapshot kernel 6.6.95 actions.
+name: Build netcore_n60-pro_512mb xplorewrt 24.10 snapshot kernel 6.6.95 new actions.
 
 on:
   workflow_dispatch:
