@@ -288,7 +288,7 @@ jobs:
       uses: softprops/action-gh-release@master
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
-        tag_name: ${{ env.FILE_DATE }}
+        tag_name: ${{ env.TARGET_CHIP }}_${{ env.DEVICE_NAME }}_${{ env.TARGET_DISK }}
         name: ${{ env.TARGET_CHIP }}_${{ env.DEVICE_NAME }}_${{ env.TARGET_DISK }}_${{ env.KERNEL_VERS }}_${{ env.FILE_DATE }}
         files: ${{ env.FIRMWARE }}/*
         body: |
@@ -389,19 +389,13 @@ jobs:
         repository: ${{ github.repository }}
         retain_days: 0
         keep_minimum_runs: 1
-        delete_workflow_pattern: Build_cmcc_xr30-emmc_annawrt-24.10ss-k6.6.yml
+        delete_workflow_pattern: netcore_n60-pro_512mb
  
     - name: Delete Old Releases (古いリリースの削除)
       if: steps.compile.outcome == 'success' && env.INPUT_RELEASE == 'true'
-      shell: bash
-      run: |
-        QUERY="${{ env.TARGET_CHIP }}_${{ env.DEVICE_NAME }}_${{ env.TARGET_DISK }}_${{ env.KERNEL_VERS }}"
-        OLD_TAGS=$(gh release list --limit 100 --json tagName,title,createdAt | jq -r --arg Q "$QUERY" '
-          [.[] | select(.title | contains($Q))] | sort_by(.createdAt) | reverse | .[2:] | .[].tagName')
-        if [ -n "$OLD_TAGS" ]; then
-          for tag in $OLD_TAGS; do
-            gh release delete "$tag" --yes --cleanup-tag > /dev/null 2>&1
-          done
-          echo "✅ 旧バージョン (${QUERY}) のクリーンアップ完了"
-        fi
+      uses: dev-drprasad/delete-older-releases@master
+      with:
+        keep_latest: 2
+        delete_tags: true
+        delete_tag_pattern: "${{ env.TARGET_CHIP }}_${{ env.DEVICE_NAME }}_${{ env.TARGET_DISK }}" 
     
