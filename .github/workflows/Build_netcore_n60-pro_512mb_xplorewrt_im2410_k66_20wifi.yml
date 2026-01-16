@@ -9,7 +9,7 @@
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
-name: Build netcore_n60-pro_512mb imwrt 24.10 snapshot 20xWi-Fi actions.
+name: Build netcore_n60-pro_512mb xplorewrt im24.10 snapshot 20 x Wi-Fi actions.
 
 on:
   workflow_dispatch:
@@ -85,7 +85,7 @@ env:
   INPUT_WENSHUSHU:                            ${{ github.event.inputs.upload_wenshushu }}
   INPUT_NOTIFY:                               ${{ github.event.inputs.telegram_notify }}
   INPUT_KEEPALIVE:                            ${{ github.event_name == 'schedule' || github.event.inputs.keepalive_cache == 'true' }}
-  INPUT_CLEANCACHE:                           ${{ github.event.inputs.clean_ccache }}
+  INPUT_CLEANCACHE:                           ${{ github.event.inputs.clean_cache }}
   # hardware & repo info
   DEVICE_NAME:                                NETCORE_N60-PRO
   TARGET_CHIP:                                mt7986a
@@ -344,13 +344,12 @@ jobs:
             WEN_MSG=""
         fi
       
-        # STAT_LIST="•⚙️%20配置复元:　%20　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
-        # STAT_LIST="${STAT_LIST}•🛜%20信号增幅:　%20　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
-        STAT_LIST="•🛜%20信号增幅:　%20　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
+        STAT_LIST="•⚙️%20配置复元:　%20　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
+        STAT_LIST="${STAT_LIST}•🛜%20信号增幅:　%20　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
         STAT_LIST="${STAT_LIST}•💾%20构建成果:　%20　%20　$(get_stat "${{ github.event.inputs.upload_firmware }}")%0A"
         STAT_LIST="${STAT_LIST}•🚀%20公开配信:　%20　%20　$(get_stat "${{ github.event.inputs.upload_release }}")%0A"
         STAT_LIST="${STAT_LIST}•☁️%20文氏転送:　%20　%20　${STAT_WEN}%0A"
-        STAT_LIST="${STAT_LIST}•🧹%20缓存清理:　%20　%20　$(get_stat "${{ github.event.inputs.clean_ccache }}")"
+        STAT_LIST="${STAT_LIST}•🧹%20缓存清理:　%20　%20　$(get_stat "${{ github.event.inputs.clean_cache }}")"
 
         MSG="${BUILD_STAT}"
         MSG="${MSG}%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
@@ -389,7 +388,7 @@ jobs:
         repository: ${{ github.repository }}
         retain_days: 0
         keep_minimum_runs: 1
-        delete_workflow_pattern: netcore_n60-pro_512mb
+        delete_workflow_pattern: 20wifi
  
     - name: Delete Old Releases (古いリリースの削除)
       if: steps.compile.outcome == 'success' && env.INPUT_RELEASE == 'true'
