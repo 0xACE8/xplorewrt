@@ -9,19 +9,19 @@
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
-name: Build netcore_n60-pro_512mb xplorewrt 24.10 snapshot kernel 6.6.95 new actions.
+name: Build netcore_n60-pro_512mb xplorewrt 24.10 snapshot kernel 6.6.95 actions.
 
 on:
   workflow_dispatch:
     inputs:
-      # restore_config:
-      #   description: 'Restore Configuration. 🇯🇵 設定を復元'
-      #   type: boolean
-      #   default: false
-      # boost_wifi_5g:
-      #   description: 'Boost Wi-Fi 5G Signal. 🇯🇵 5G信号の増幅'
-      #   type: boolean
-      #   default: false
+      restore_config:
+        description: 'Restore Configuration. 🇯🇵 設定を復元'
+        type: boolean
+        default: false
+      #boost_wifi_5g:
+      #  description: 'Boost Wi-Fi 5G Signal. 🇯🇵 5G信号の増幅'
+      #  type: boolean
+      #  default: false
       upload_firmware:
         description: 'Upload FW to Artifact. 🇯🇵 Artifactに保存'
         type: boolean
@@ -60,7 +60,7 @@ env:
   # cmcc-xr30-emmc
   NETCORE_N60PRO_512MB_PONLY2410_K66_PATCHES: ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_PATCHES }}
   NETCORE_N60PRO_512MB_PONLY2410_K66_PROFILE: ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_PROFILE }}
-  # NETCORE_N60PRO_512MB_PONLY2410_K66_ARCHIVE: ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_ARCHIVE }}
+  NETCORE_N60PRO_512MB_PONLY2410_K66_ARCHIVE: ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_ARCHIVE }}
   # token
   GITHUB_TOKEN:                               ${{ secrets.ACCESS_TOKEN }}
   ACCESS_TOKEN:                               ${{ secrets.ACCESS_TOKEN }}
@@ -85,7 +85,7 @@ env:
   INPUT_WENSHUSHU:                            ${{ github.event.inputs.upload_wenshushu }}
   INPUT_NOTIFY:                               ${{ github.event.inputs.telegram_notify }}
   INPUT_KEEPALIVE:                            ${{ github.event_name == 'schedule' || github.event.inputs.keepalive_cache == 'true' }}
-  INPUT_CLEANCACHE:                           ${{ github.event.inputs.clean_ccache }}
+  INPUT_CLEANCACHE:                           ${{ github.event.inputs.clean_cache }}
   # hardware & repo info
   DEVICE_NAME:                                NETCORE_N60-PRO
   TARGET_CHIP:                                mt7986a
@@ -155,9 +155,8 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo -E apt -yqq update
-        sudo -E apt -yqq install zip rename dos2unix libfuse-dev python3-netifaces libcrypt-dev libncurses5-dev cargo
+        sudo -E apt -yqq install zip rename dos2unix libfuse-dev python3-netifaces libcrypt-dev libncurses5-dev
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-        rustup target add aarch64-unknown-linux-musl
         sudo timedatectl set-timezone "$TZ"
         sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
         git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
@@ -218,16 +217,17 @@ jobs:
         ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_PROFILE }}
         EOF
         ${{ secrets.PONLY2410_K66_REPO_DIFF }}
+        
         ${{ secrets.ARGON_THEME_NETCORE }}
 
         # Check CCache Status
         ccache -s
 
-    # - name: Restore Config Archive (設定アーカイブの復元)
-    #   if: steps.loadconfig.outcome == 'success' && env.INPUT_RESTORE == 'true'
-    #   working-directory: ./openwrt
-    #   run: |
-    #     ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_ARCHIVE }}
+    - name: Restore Config Archive (設定アーカイブの復元)
+      if: steps.loadconfig.outcome == 'success' && env.INPUT_RESTORE == 'true'
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_ARCHIVE }}
 
     - name: Download Packages (パッケージのダウンロード)
       if: steps.loadconfig.outcome == 'success' && !cancelled()
@@ -344,13 +344,12 @@ jobs:
             WEN_MSG=""
         fi
       
-        # STAT_LIST="•⚙️%20配置复元:　%20　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
+        STAT_LIST="•⚙️%20配置复元:　%20　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
         # STAT_LIST="${STAT_LIST}•🛜%20信号增幅:　%20　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
-        STAT_LIST="•🛜%20信号增幅:　%20　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
         STAT_LIST="${STAT_LIST}•💾%20构建成果:　%20　%20　$(get_stat "${{ github.event.inputs.upload_firmware }}")%0A"
         STAT_LIST="${STAT_LIST}•🚀%20公开配信:　%20　%20　$(get_stat "${{ github.event.inputs.upload_release }}")%0A"
         STAT_LIST="${STAT_LIST}•☁️%20文氏転送:　%20　%20　${STAT_WEN}%0A"
-        STAT_LIST="${STAT_LIST}•🧹%20缓存清理:　%20　%20　$(get_stat "${{ github.event.inputs.clean_ccache }}")"
+        STAT_LIST="${STAT_LIST}•🧹%20缓存清理:　%20　%20　$(get_stat "${{ github.event.inputs.clean_cache }}")"
 
         MSG="${BUILD_STAT}"
         MSG="${MSG}%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
@@ -363,6 +362,7 @@ jobs:
 
         MSG="${MSG}%0A＝＝＝＝＝ 状 態 一 覧 ＝＝＝＝＝＝%0A${STAT_LIST}%0A%0A"
         MSG="${MSG}＝＝＝＝＝ 結 果 情 報 ＝＝＝＝＝＝%0A"
+        MSG="${MSG}•⏱️実行時間:　%20　%20　${{ env.DURATION }}%0A"
         
         if [ "${{ steps.compile.outcome }}" == "success" ]; then
           MSG="${MSG}•📦%20ファイル:%0A　%20　%20　${OUTPUT_FILE}%0A"
@@ -371,7 +371,6 @@ jobs:
               MSG="${MSG}%0A${WEN_MSG}"
           fi
 
-          MSG="${MSG}•⏱️実行時間:　%20　%20　${{ env.DURATION }}%0A"
         else
           MSG="${MSG}•❌失敗時刻:　%20　$(date +'%Y-%m-%d %H:%M')%0A"
         fi
