@@ -217,9 +217,8 @@ jobs:
         ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_PROFILE }}
         EOF
         ${{ secrets.PONLY2410_K66_REPO_DIFF }}
-        
         ${{ secrets.ARGON_THEME_NETCORE }}
-
+        sed -i 's/download-ci-llvm=true/download-ci-llvm=false/g' feeds/packages/lang/rust/Makefile
         # Check CCache Status
         ccache -s
 
