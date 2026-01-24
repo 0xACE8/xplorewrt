@@ -17,11 +17,11 @@ on:
       restore_config:
         description: 'Restore Configuration. 🇯🇵 設定を復元'
         type: boolean
-        default: false
+        default: true
       boost_wifi_5g:
         description: 'Boost Wi-Fi 5G Signal. 🇯🇵 5G信号の増幅'
         type: boolean
-        default: false
+        default: true
       upload_firmware:
         description: 'Upload FW to Artifact. 🇯🇵 Artifactに保存'
         type: boolean
@@ -29,11 +29,11 @@ on:
       upload_release:
         description: 'Upload FW to Release.. 🇯🇵 Releaseに公開'
         type: boolean
-        default: false
+        default: true
       upload_wenshushu:
         description: 'Upload FW to WENSHUSHU 🇯🇵 文叔叔に転送'
         type: boolean
-        default: false  
+        default: true
       telegram_notify:
         description: 'Telegram Notification. 🇯🇵 Telegram通知'
         type: boolean
