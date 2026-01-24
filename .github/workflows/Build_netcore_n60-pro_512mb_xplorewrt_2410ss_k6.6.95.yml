@@ -362,7 +362,7 @@ jobs:
 
         MSG="${MSG}%0A＝＝＝＝＝ 状 態 一 覧 ＝＝＝＝＝＝%0A${STAT_LIST}%0A%0A"
         MSG="${MSG}＝＝＝＝＝ 結 果 情 報 ＝＝＝＝＝＝%0A"
-        MSG="${MSG}•⏱️実行時間:　%20　%20　${{ env.DURATION }}%0A"
+        MSG="${MSG}•⏱️%20実行時間:　%20　%20　${{ env.DURATION }}%0A"
         
         if [ "${{ steps.compile.outcome }}" == "success" ]; then
           MSG="${MSG}•📦%20ファイル:%0A　%20　%20　${OUTPUT_FILE}%0A"
@@ -372,7 +372,7 @@ jobs:
           fi
 
         else
-          MSG="${MSG}•❌失敗時刻:　%20　$(date +'%Y-%m-%d %H:%M')%0A"
+          MSG="${MSG}•❌%20失敗時刻:　%20　$(date +'%Y-%m-%d %H:%M')%0A"
         fi
 
         MSG="${MSG}%0A＝＝＝ ＝＝＝ ＝＝＝ ＝＝＝ ＝＝＝ "
