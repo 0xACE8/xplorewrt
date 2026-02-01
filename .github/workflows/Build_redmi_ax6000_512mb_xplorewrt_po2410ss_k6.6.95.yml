@@ -79,7 +79,7 @@ env:
   TELEGRAM_CHAT_ID:                           ${{ secrets.TELEGRAM_CHAT_ID }}
   # input status
   INPUT_RESTORE:                              ${{ github.event.inputs.restore_config }}
-  # INPUT_BOOST5G:                              ${{ github.event.inputs.boost_wifi_5g }}
+  INPUT_BOOST5G:                              ${{ github.event.inputs.boost_wifi_5g }}
   INPUT_ARTIFACT:                             ${{ github.event.inputs.upload_firmware }}
   INPUT_RELEASE:                              ${{ github.event.inputs.upload_release }}
   INPUT_WENSHUSHU:                            ${{ github.event.inputs.upload_wenshushu }}
