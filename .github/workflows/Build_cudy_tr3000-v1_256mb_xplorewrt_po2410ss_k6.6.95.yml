@@ -129,12 +129,6 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Free Disk Space (ディスク空き容量の確保)
-      uses: easimon/maximize-build-space@master
-      with: 
-        root-reserve-mb: 8192
-        swap-size-mb: 1
-
     - name: Check Server Performance (サーバー性能の確認)
       run: |
         echo "⚠️注意⚠️"
