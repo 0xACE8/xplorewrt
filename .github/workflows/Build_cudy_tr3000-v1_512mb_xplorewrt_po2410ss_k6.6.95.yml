@@ -381,7 +381,7 @@ jobs:
         token: ${{ secrets.ACCESS_TOKEN }}
         repository: ${{ github.repository }}
         retain_days: 0
-        keep_minimum_runs: 1
+        keep_minimum_runs: 0
         delete_workflow_pattern: cudy_tr3000-v1_512mb
  
     - name: Delete Old Releases (古いリリースの削除)
