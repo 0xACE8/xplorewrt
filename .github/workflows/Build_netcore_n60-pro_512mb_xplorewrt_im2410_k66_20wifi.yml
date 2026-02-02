@@ -282,7 +282,7 @@ jobs:
       uses: softprops/action-gh-release@master
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
-        tag_name: ${{ env.TARGET_CHIP }}_${{ env.DEVICE_NAME }}_${{ env.TARGET_DISK }}_20wifi
+        tag_name: ${{ env.FILE_DATE }}_${{ env.TARGET_CHIP }}_${{ env.DEVICE_NAME }}_${{ env.TARGET_DISK }}_20wifi
         name: ${{ env.TARGET_CHIP }}_${{ env.DEVICE_NAME }}_${{ env.TARGET_DISK }}_${{ env.KERNEL_VERS }}_${{ env.FILE_DATE }}
         files: ${{ env.FIRMWARE }}/*
         body: |
