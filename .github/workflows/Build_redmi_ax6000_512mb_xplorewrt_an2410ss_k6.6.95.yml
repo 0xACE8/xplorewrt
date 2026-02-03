@@ -9,7 +9,7 @@
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
-name: Build redmi_ax6000_512mb xplorewrt po24.10 snapshot kernel 6.6.95 actions.
+name: Build redmi_ax6000_512mb xplorewrt an24.10 snapshot kernel 6.6.95 actions.
 
 on:
   workflow_dispatch:
