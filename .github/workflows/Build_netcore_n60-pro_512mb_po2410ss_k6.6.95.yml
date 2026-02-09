@@ -9,7 +9,7 @@
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
-name: Build netcore_n60-pro_512mb xplorewrt po 24.10 ss kernel 6.6.95 actions.
+name: Build netcore_n60-pro_512mb ponly 24.10 ss kernel 6.6.95 actions.
 
 on:
   workflow_dispatch:
@@ -257,6 +257,12 @@ jobs:
         rm -rf feeds/packages/lang/golang && git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
         ./scripts/feeds install -a
 
+    # - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
+    #   if: env.INPUT_BOOST5G == 'true'
+    #   working-directory: ./openwrt
+    #   run: |
+    #     ${{ secrets.BOOST_5G_TO_25DBM }}
+
     - name: Load Custom Configuration (カスタム設定の読み込み)
       working-directory: ./openwrt
       id: loadconfig
@@ -367,6 +373,15 @@ jobs:
           - ‼️ **本ファームウェアは、個人利用を目的とした非公式のカスタマイズ版です。**
           - ⛔️ **強制フラッシュ等でデバイスが破損した場合、本リポジトリは一切の責任を負いません。自己責任で使用してください。**
 
+    - name: Upload to wenshushu (ウェンおじさんにアップロードする)
+      if: steps.compile.outcome == 'success' && steps.organize.outcome == 'success' && env.INPUT_WENSHUSHU == 'true'
+      working-directory: ./openwrt
+      run: |
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer wss -s -p 16 -t 600 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
+        WENSHUSHU=$(cat wenshushu.log | grep 'Manage Link:' | cut -d' ' -f3-)
+        echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
+
     - name: Calculate Duration (実行時間の計算)
       if: always() && env.INPUT_NOTIFY == 'true' && env.IS_KEEPALIVE != 'true'
       run: |
@@ -385,9 +400,22 @@ jobs:
         
         [ "${{ steps.compile.outcome }}" == "success" ] && BUILD_STAT="✅ビルドが正常に完了しました！✅" || BUILD_STAT="❌ ビルドが失敗しました！ ❌"
         
+        if [[ -n "$WENSHUSHU" ]]; then
+            STAT_WEN="✅"
+            WEN_MSG="•☁️%20文氏転送:%0A　%20　%20　$WENSHUSHU"
+        elif [[ "$INPUT_WENSHUSHU" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_wenshushu"* ]]; then
+            STAT_WEN="❌ (失敗)" 
+            WEN_MSG=""
+        else
+            STAT_WEN="⏺️"
+            WEN_MSG=""
+        fi
+
         STAT_LIST="•⚙️%20配置复元:　%20　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
+        # STAT_LIST="${STAT_LIST}•🛜%20信号增幅:　%20　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
         STAT_LIST="${STAT_LIST}•💾%20构建成果:　%20　%20　$(get_stat "${{ github.event.inputs.upload_firmware }}")%0A"
         STAT_LIST="${STAT_LIST}•🚀%20公开配信:　%20　%20　$(get_stat "${{ github.event.inputs.upload_release }}")%0A"
+        STAT_LIST="${STAT_LIST}•☁️%20文氏転送:　%20　%20　${STAT_WEN}%0A"
         STAT_LIST="${STAT_LIST}•🧹%20缓存清理:　%20　%20　$(get_stat "${{ github.event.inputs.clean_cache }}")%0A"
 
         MSG="${BUILD_STAT}%0A"
@@ -405,6 +433,9 @@ jobs:
         
         if [ "${{ steps.compile.outcome }}" == "success" ]; then
           MSG="${MSG}•📦%20ファイル:%0A　%20　%20　${OUTPUT_FILE}%0A"
+          if [[ -n "$WEN_MSG" ]]; then
+              MSG="${MSG}%0A${WEN_MSG}"
+          fi
         else
           MSG="${MSG}•❌%20失敗時刻:　%20　%20　$(date +'%Y-%m-%d %H:%M')%0A"
         fi
