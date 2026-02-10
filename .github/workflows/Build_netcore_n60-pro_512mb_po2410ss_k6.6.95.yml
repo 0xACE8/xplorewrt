@@ -111,17 +111,14 @@ jobs:
       run: |
         LAST_TS=$(date -d $(gh run list -w "$PLUGIN_REPO_FLOW" -R "$PLUGIN_REPO_SLUG" -s success --limit 1 --json updatedAt -q '.[0].updatedAt // "1970-01-01"') +%s)
         DIFF=$(( ($(date +%s) - LAST_TS) / 3600 ))
-
         if [ "$DIFF" -ge 24 ]; then
           echo "⚠️ 最終同期から ${DIFF}時間経過。同期を開始します..."
           gh workflow run "$PLUGIN_REPO_FLOW" -R "$PLUGIN_REPO_SLUG" -r "$PLUGIN_REPO_HEAD"
-          
           for i in {1..30}; do
             sleep 20
             RUN_ID=$(gh run list -w "$PLUGIN_REPO_FLOW" -R "$PLUGIN_REPO_SLUG" --limit 1 --json databaseId,status -q 'map(select(.status != "completed")) | .[0].databaseId')
             [[ -n "$RUN_ID" && "$RUN_ID" != "null" ]] && break
           done
-
           [[ -z "$RUN_ID" ]] && echo "❌ Timeout" && exit 1
           gh run watch "$RUN_ID" -R "$PLUGIN_REPO_SLUG" --exit-status
         else
@@ -140,14 +137,12 @@ jobs:
       shell: bash
       run: |
         KEYS=("${{ runner.os }}-openwrt-dl-v3-" "MT7981b-[${{ env.CACHE_MONTH }}]")
-
         for KEY in "${KEYS[@]}"; do
           CACHES=$(gh cache list -R ${{ github.repository }} --limit 100 --json key -q ".[].key" 2>/dev/null | grep -F "$KEY" || true)
           for cache_key in $CACHES; do
             gh cache delete "$cache_key" -R ${{ github.repository }} || true
           done
         done
-
         echo "✅ すべてのクリーンアップ処理が完了しました！"
 
     - name: Check Server Performance (サーバー性能の確認)
@@ -178,7 +173,6 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/actions/workflows/${{ github.workflow }}/dispatches \
             -d '{"ref":"${{ github.ref }}"}'
-          
           gh run cancel ${{ github.run_id }}
           sleep 10
           exit 0
@@ -204,9 +198,8 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo -E apt -yqq update
-        sudo -E apt -yqq install zip rename dos2unix libfuse-dev python3-netifaces libcrypt-dev libncurses5-dev cargo
+        sudo -E apt -yqq install zip rename dos2unix libfuse-dev python3-netifaces libcrypt-dev libncurses5-dev
         sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
-        rustup target add aarch64-unknown-linux-musl
         sudo timedatectl set-timezone "$TZ"
         sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
         git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
@@ -253,6 +246,7 @@ jobs:
         [ -d "dl" ] && rm -rf dl/go-mod-* 2>/dev/null || true
         ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_PATCHES }}
         ./scripts/feeds update -a
+        rm -rf feeds/packages/lang/rust && git clone https://github.com/0xACE8/packages_lang_rust -b 1.90.0 feeds/packages/lang/rust
         rm -rf feeds/packages/lang/golang && git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
         ./scripts/feeds install -a
 
