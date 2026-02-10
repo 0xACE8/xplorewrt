@@ -250,7 +250,6 @@ jobs:
         [ -d "dl" ] && rm -rf dl/go-mod-* 2>/dev/null || true
         ${{ secrets.NETCORE_N60PRO_512MB_PONLY2410_K66_PATCHES }}
         ./scripts/feeds update -a
-        rm -rf feeds/packages/lang/rust && git clone https://github.com/0xACE8/packages_lang_rust -b 1.90.0 feeds/packages/lang/rust
         rm -rf feeds/packages/lang/golang && git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
         ./scripts/feeds install -a
 
