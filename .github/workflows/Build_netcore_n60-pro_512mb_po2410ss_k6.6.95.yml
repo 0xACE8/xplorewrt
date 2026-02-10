@@ -216,6 +216,8 @@ jobs:
         cd openwrt
         [ -f "scripts/projectsmirrors.json" ] && sed -i '/.cn\//d; /tencent/d; /aliyun/d' scripts/projectsmirrors.json
         [ -d "files" ] && rm -rf files
+        sed -i '47,54d' scripts/patch-kernel.sh
+        cat scripts/patch-kernel.sh
         # Add annawrt-packages Repo To Feeds ()
         ${{ secrets.ADD_EXTRA_SOURCE }}
 
