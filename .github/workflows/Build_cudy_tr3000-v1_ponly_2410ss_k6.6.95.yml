@@ -158,17 +158,17 @@ jobs:
         echo -e "$(sudo lshw -short -C memory | grep GiB)\n"
         echo "---------------------ハードディスク情報---------------------"
         echo "ディスク容量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
-        if [[ ! "$CPU_MODEL" =~ "EPYC 7763" && ! "$CPU_MODEL" =~ "EPYC 9V74" ]]; then
-          echo "❌ ハードウェア不適合、$SPEC_NAME を再待機させています..."
-          gh workflow run "${{ github.workflow }}" \
-            --ref "${{ github.ref_name }}" \
-            -f nand_size="$SPEC_NAME"
-          sleep 15
-          gh run cancel ${{ github.run_id }}
-          exit 1
-        else
-          echo "✅ ハードウェアチェック完了、実行を継続。"
-        fi
+#        if [[ ! "$CPU_MODEL" =~ "EPYC 7763" && ! "$CPU_MODEL" =~ "EPYC 9V74" ]]; then
+#          echo "❌ ハードウェア不適合、$SPEC_NAME を再待機させています..."
+#          gh workflow run "${{ github.workflow }}" \
+#            --ref "${{ github.ref_name }}" \
+#            -f nand_size="$SPEC_NAME"
+#          sleep 15
+#          gh run cancel ${{ github.run_id }}
+#          exit 1
+#        else
+#          echo "✅ ハードウェアチェック完了、実行を継続。"
+#        fi
         if [ "$FREE_SPACE" -lt 50 ]; then
           echo "⚠️ ストレージ不足、拡張プロセスを開始。"
           echo "needs_maximize=true" >> $GITHUB_OUTPUT
