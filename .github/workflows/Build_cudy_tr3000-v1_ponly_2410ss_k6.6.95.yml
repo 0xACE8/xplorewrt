@@ -54,7 +54,7 @@ jobs:
   build:
     name: Build for ${{ matrix.nand_size }}
     runs-on: ubuntu-24.04
-    permissions: write-all  # 放在这里，属于 Job 的属性
+    permissions: write-all
     strategy:
       fail-fast: false
       matrix:
@@ -62,31 +62,30 @@ jobs:
 
     env:
       # target hardware config & patch
-      DEVICE_PATCH: ${{ secrets[format('CUDY_TR3000_{0}_DEVICE_PATCH', matrix.nand_size == '128mb' && '128MB' || (matrix.nand_size == '256mb' && '256MB' || '512MB'))] }}
-      BUILD_CONFIG: ${{ secrets[format('CUDY_TR3000_{0}_BUILD_CONFIG', matrix.nand_size == '128mb' && '128MB' || (matrix.nand_size == '256mb' && '256MB' || '512MB'))] }}
-      CONF_ARCHIVE: ${{ secrets[format('CUDY_TR3000_{0}_CONF_ARCHIVE', matrix.nand_size == '128mb' && '128MB' || (matrix.nand_size == '256mb' && '256MB' || '512MB'))] }}
+      DEVICE_PATCH: ${{ secrets[format('CUDY_TR3000_{0}_PONLY2410_K66_PATCHES', matrix.nand_size == '128mb' && '128MB' || (matrix.nand_size == '256mb' && '256MB' || '512MB'))] }}
+      BUILD_CONFIG: ${{ secrets[format('CUDY_TR3000_{0}_PONLY2410_K66_PROFILE', matrix.nand_size == '128mb' && '128MB' || (matrix.nand_size == '256mb' && '256MB' || '512MB'))] }}
+      CONF_ARCHIVE: ${{ secrets.CUDY_TR3000_COMON_PONLY2410_K66_ARCHIVE }}
       # repository & branch
-      GIT_REPO_URL: ${{ secrets.PONLY2410_K66_GIT_REPO_URL }}
-      GIT_TREE_REF: ${{ secrets.PONLY2410_K66_GIT_TREE_REF }}
-      GIT_HEAD_REF: ${{ secrets.PONLY2410_K66_GIT_HEAD_REF }}
-      SOURCE_PATCH: ${{ secrets.PONLY2410_K66_SOURCE_PATCH }}
+      GIT_REPO_URL: ${{ secrets.REPO_PONLY2410_K66_LINK }}
+      GIT_TREE_REF: ${{ secrets.REPO_PONLY2410_K66_TREE }}
+      GIT_HEAD_REF: ${{ secrets.REPO_PONLY2410_K66_HEAD }}
+      SOURCE_PATCH: ${{ secrets.REPO_PONLY2410_K66_DIFF }}
       # token
       GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       # feeds source & check security
-      FEEDS_SOURCE: ${{ secrets.FEEDS_SOURCE }}
-      CHECK_SHA512: ${{ secrets.CHECK_SHA512 }}
-      REPACK_IMAGE: ${{ secrets.REPACK_IMAGE }}
+      FEEDS_SOURCE: ${{ secrets.ADD_EXTRA_SOURCE }}
+      CHECK_SHA512: ${{ secrets.ACCESS_SHA512SUM }}
+      REPACK_IMAGE: ${{ secrets.ACCESS_REPACKAGE }}
       # plugins repository
-      PLUGINS_REPO: ${{ secrets.PLUGINS_REPO }}
-      PLUGINS_HEAD: ${{ secrets.PLUGINS_HEAD }}
-      PLUGINS_SYNC: ${{ secrets.PLUGINS_SYNC }}
+      PLUGINS_REPO: ${{ secrets.REPO_PLUGIN_SLUG }}
+      PLUGINS_HEAD: ${{ secrets.REPO_PLUGIN_HEAD }}
+      PLUGINS_SYNC: ${{ secrets.REPO_PLUGIN_FLOW }}
       # color sytle for argon
-      ARGON_COLORS: ${{ secrets.ARGON_COLORS }}
+      ARGON_COLORS: ${{ secrets.ARGON_THEME_CUDY }}
       # telegram notice
-      TGRAM_BOTKEY: ${{ secrets.TGRAM_BOTKEY }}
-      TGRAM_CHATID: ${{ secrets.TGRAM_CHATID }}
-      TGRAM_SOURCE: ${{ secrets.TGRAM_SOURCE }}
+      TGRAM_BOTKEY: ${{ secrets.TELEGRAM_BOT_KEY }}
+      TGRAM_CHATID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      #TGRAM_SOURCE: ${{ secrets.TGRAM_SOURCE }}
       # action input flags
       INPUT_CONFIG: ${{ github.event.inputs.restore_config }}
       INPUT_WIFI5G: ${{ github.event.inputs.boost_wifi_5g }}
@@ -97,7 +96,7 @@ jobs:
       INPUT_CCACHE: ${{ github.event_name == 'schedule' || github.event.inputs.keepalive_cache == 'true' }}
       # target hardware & build info
       TARGET_MODEL: cudy_tr3000-v1
-      TARGET_CHIPSS: mt7981b
+      TARGET_CHIPS: mt7981b
       TARGET_MEDIA: ${{ matrix.nand_size }}_nand
       CODE_SOURCES: padavanonly
       LINUX_KERNEL: kernel_6.6.95
@@ -214,7 +213,7 @@ jobs:
         [ -f "openwrt/scripts/projectsmirrors.json" ] && sed -i '/.cn\//d; /tencent/d; /aliyun/d' openwrt/scripts/projectsmirrors.json
         [ -d "files" ] && rm -rf files
         # Add annawrt-packages Repo To Feeds ()
-        ${{ secrets.FEEDS_SOURCE }}
+        ${{ env.FEEDS_SOURCE }}
 
     - name: Initialize Cache Hash (キャッシュハッシュの初期化)
       working-directory: ./openwrt
@@ -243,7 +242,7 @@ jobs:
         # Surgical Clean Go Cache (Goキャッシュの物理削除)
         [ -d "dl" ] && find dl -size 0 -exec rm -f {} +
         [ -d "dl" ] && rm -rf dl/go-mod-* 2>/dev/null || true
-        ${{ secrets[format('CUDY_TR3000_{0}_DEVICE_PATCH', env.SECRET_ID_UP)] }}
+        ${{ env.DEVICE_PATCH }}
         ./scripts/feeds update -a
         rm -rf feeds/packages/lang/golang && git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
         ./scripts/feeds install -a
@@ -260,10 +259,10 @@ jobs:
       run: |
         set +x
         cat <<'EOF' > .config
-        ${{ secrets[format('CUDY_TR3000_{0}_BUILD_CONFIG', env.SECRET_ID_UP)] }}
+        ${{ env.BUILD_CONFIG }}
         EOF
-        ${{ secrets.SOURCE_PATCH }}
-        ${{ secrets.ARGON_COLORS }}
+        ${{ env.SOURCE_PATCH }}
+        ${{ env.ARGON_COLORS }}
         # Check CCache Status
         ccache -s
 
@@ -282,7 +281,7 @@ jobs:
       if: steps.loadconfig.outcome == 'success' && env.INPUT_CONFIG == 'true'
       working-directory: ./openwrt
       run: |
-        ${{ secrets[format('CUDY_TR3000_{0}_CONF_ARCHIVE', env.SECRET_ID_UP)] }}
+        ${{ env.CONF_ARCHIVE }}
 
     - name: Download Packages (パッケージのダウンロード)
       if: steps.loadconfig.outcome == 'success' && !cancelled()
@@ -325,8 +324,8 @@ jobs:
         EXT="${FIRMWARE_FILE##*.}"
         ls -A | grep -v "$FIRMWARE_FILE" | xargs rm -rdf
         mv "$FIRMWARE_FILE" "${{ env.OUTPUT_FILES }}.$EXT"
-        sha512sums ${{ secrets.CHECK_SHA512 }} sha512sums "${{ env.OUTPUT_FILES }}.$EXT"
-        ${{ secrets.REPACK_IMAGE }} "${{ env.OUTPUT_FILES }}.$EXT"
+        sha512sums ${{ env.CHECK_SHA512 }} sha512sums "${{ env.OUTPUT_FILES }}.$EXT"
+        ${{ env.REPACK_IMAGE }} "${{ env.OUTPUT_FILES }}.$EXT"
         echo "FIRMWARE=$PWD" >> $GITHUB_ENV
 
     - name: Upload to Artifacts (Artifactに保存)
@@ -341,11 +340,11 @@ jobs:
       uses: softprops/action-gh-release@master
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
-        tag_name: ${{ env.FILE_DATE }}_${{ env.TARGET_CHIPSS }}_${{ env.TARGET_MODEL }}_${{ env.TARGET_MEDIA }}
-        name: ${{ env.TARGET_CHIPSS }}_${{ env.TARGET_MODEL }}_${{ env.TARGET_MEDIA }}_${{ env.LINUX_KERNEL }}_${{ env.FILE_DATE }}
+        tag_name: ${{ env.FILE_DATE }}_${{ env.TARGET_CHIPS }}_${{ env.TARGET_MODEL }}_${{ env.TARGET_MEDIA }}
+        name: ${{ env.TARGET_CHIPS }}_${{ env.TARGET_MODEL }}_${{ env.TARGET_MEDIA }}_${{ env.LINUX_KERNEL }}_${{ env.FILE_DATE }}
         files: ${{ env.FIRMWARE }}/*
         body: |
-          **本ファームウェアは、CPU「${{ env.TARGET_CHIPSS }}」搭載のモデル「${{ env.TARGET_MODEL }}」✅ ${{ env.TARGET_MEDIA }} ✅専用です。**
+          **本ファームウェアは、CPU「${{ env.TARGET_CHIPS }}」搭載のモデル「${{ env.TARGET_MODEL }}」✅ ${{ env.TARGET_MEDIA }} ✅専用です。**
           ### 📒「${{ env.CODE_SOURCES }}」のソースコードを基にビルドされました。
           - 🖥️ 対応機種: 　${{ env.TARGET_MODEL }}
           - 💿 容量仕様: 　${{ env.TARGET_MEDIA }}
@@ -434,8 +433,8 @@ jobs:
 
         MSG="${MSG}%0A＝＝＝ ＝＝＝ ＝＝＝ ＝＝＝ ＝＝＝ "
         
-        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TGRAM_BOTKEY }}/sendMessage" \
-          -d chat_id="${{ secrets.TGRAM_CHATID }}" \
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ env.TGRAM_BOTKEY }}/sendMessage" \
+          -d chat_id="${{ env.TGRAM_CHATID }}" \
           -d text="$(echo "$MSG" | sed 's/ /%20/g')"
 
     - name: Delete Old Workflows (古いワークフローの削除)
@@ -453,5 +452,5 @@ jobs:
       with:
         keep_latest: 2
         delete_tags: true
-        delete_tag_pattern: "${{ env.TARGET_CHIPSS }}_${{ env.TARGET_MODEL }}" 
+        delete_tag_pattern: "${{ env.TARGET_CHIPS }}_${{ env.TARGET_MODEL }}" 
     
