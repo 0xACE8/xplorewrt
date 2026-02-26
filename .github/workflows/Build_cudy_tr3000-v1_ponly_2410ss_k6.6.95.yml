@@ -77,9 +77,9 @@ jobs:
       CHECK_SHA512: ${{ secrets.ACCESS_SHA512SUM }}
       REPACK_IMAGE: ${{ secrets.ACCESS_REPACKAGE }}
       # plugins repository
-      PLUGINS_REPO: ${{ secrets.REPO_PLUGIN_SLUG }}
-      PLUGINS_HEAD: ${{ secrets.REPO_PLUGIN_HEAD }}
-      PLUGINS_SYNC: ${{ secrets.REPO_PLUGIN_FLOW }}
+      PLUGINS_REPO: ${{ secrets.PLUGIN_REPO_SLUG }}
+      PLUGINS_HEAD: ${{ secrets.PLUGIN_REPO_HEAD }}
+      PLUGINS_SYNC: ${{ secrets.PLUGIN_REPO_FLOW }}
       # color sytle for argon
       ARGON_COLORS: ${{ secrets.ARGON_THEME_CUDY }}
       # telegram notice
