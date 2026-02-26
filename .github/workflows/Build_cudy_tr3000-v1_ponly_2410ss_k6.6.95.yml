@@ -1,0 +1,457 @@
+#
+# Copyright (c) 2019-2026 0xACE8
+#
+# 本ソフトウェアはフリーソフトウェアであり、MITライセンスの下で公開されています。
+# 詳細については /LICENSE を参照してください。
+#
+# https://github.com/0xACE8
+#
+# 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
+#
+
+name: Build cudy_tr3000-v1 ponly 24.10ss kernel 6.6.95 actions.
+
+on:
+  workflow_dispatch:
+    inputs:
+      nand_size:
+        description: 'Reroll Specification.. 🇯🇵 規格を再抽選'
+        required: false
+        default: ''
+      restore_config:
+        description: 'Restore Configuration. 🇯🇵 設定を復元'
+        type: boolean
+        default: true
+      boost_wifi_5g:
+        description: 'Boost Wi-Fi 5G Signal. 🇯🇵 5G信号の増幅'
+        type: boolean
+        default: true
+      upload_firmware:
+        description: 'Upload FW to Artifact. 🇯🇵 Artifactに保存'
+        type: boolean
+        default: false
+      upload_release:
+        description: 'Upload FW to Release.. 🇯🇵 Releaseに公開'
+        type: boolean
+        default: true
+      upload_wenshushu:
+        description: 'Upload FW to WENSHUSHU 🇯🇵 文叔叔に転送'
+        type: boolean
+        default: true
+      telegram_notify:
+        description: 'Telegram Notification. 🇯🇵 Telegram通知'
+        type: boolean
+        default: true
+      keepalive_cache:
+        description: 'Manual Cache Keepalive 🇯🇵 保活モード'
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 2 * * 1'
+    - cron: '0 1 1 * *'
+
+jobs:
+  build:
+    name: Build for ${{ matrix.nand_size }}
+    runs-on: ubuntu-24.04
+    permissions: write-all  # 放在这里，属于 Job 的属性
+    strategy:
+      fail-fast: false
+      matrix:
+        nand_size: [128mb, 256mb, 512mb]
+
+    env:
+      # target hardware config & patch
+      DEVICE_PATCH: ${{ secrets[format('CUDY_TR3000_{0}_DEVICE_PATCH', matrix.nand_size == '128mb' && '128MB' || (matrix.nand_size == '256mb' && '256MB' || '512MB'))] }}
+      BUILD_CONFIG: ${{ secrets[format('CUDY_TR3000_{0}_BUILD_CONFIG', matrix.nand_size == '128mb' && '128MB' || (matrix.nand_size == '256mb' && '256MB' || '512MB'))] }}
+      CONF_ARCHIVE: ${{ secrets[format('CUDY_TR3000_{0}_CONF_ARCHIVE', matrix.nand_size == '128mb' && '128MB' || (matrix.nand_size == '256mb' && '256MB' || '512MB'))] }}
+      # repository & branch
+      GIT_REPO_URL: ${{ secrets.PONLY2410_K66_GIT_REPO_URL }}
+      GIT_TREE_REF: ${{ secrets.PONLY2410_K66_GIT_TREE_REF }}
+      GIT_HEAD_REF: ${{ secrets.PONLY2410_K66_GIT_HEAD_REF }}
+      SOURCE_PATCH: ${{ secrets.PONLY2410_K66_SOURCE_PATCH }}
+      # token
+      GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      # feeds source & check security
+      FEEDS_SOURCE: ${{ secrets.FEEDS_SOURCE }}
+      CHECK_SHA512: ${{ secrets.CHECK_SHA512 }}
+      REPACK_IMAGE: ${{ secrets.REPACK_IMAGE }}
+      # plugins repository
+      PLUGINS_REPO: ${{ secrets.PLUGINS_REPO }}
+      PLUGINS_HEAD: ${{ secrets.PLUGINS_HEAD }}
+      PLUGINS_SYNC: ${{ secrets.PLUGINS_SYNC }}
+      # color sytle for argon
+      ARGON_COLORS: ${{ secrets.ARGON_COLORS }}
+      # telegram notice
+      TGRAM_BOTKEY: ${{ secrets.TGRAM_BOTKEY }}
+      TGRAM_CHATID: ${{ secrets.TGRAM_CHATID }}
+      TGRAM_SOURCE: ${{ secrets.TGRAM_SOURCE }}
+      # action input flags
+      INPUT_CONFIG: ${{ github.event.inputs.restore_config }}
+      INPUT_WIFI5G: ${{ github.event.inputs.boost_wifi_5g }}
+      INPUT_UP_ART: ${{ github.event.inputs.upload_firmware }}
+      INPUT_UP_REL: ${{ github.event.inputs.upload_release }}
+      INPUT_UP_WSS: ${{ github.event.inputs.upload_wenshushu }}
+      INPUT_TGINFO: ${{ github.event.inputs.telegram_notify }}
+      INPUT_CCACHE: ${{ github.event_name == 'schedule' || github.event.inputs.keepalive_cache == 'true' }}
+      # target hardware & build info
+      TARGET_MODEL: cudy_tr3000-v1
+      TARGET_CHIPSS: mt7981b
+      TARGET_MEDIA: ${{ matrix.nand_size }}_nand
+      CODE_SOURCES: padavanonly
+      LINUX_KERNEL: kernel_6.6.95
+      OUTPUT_FILES: xplorewrt-po24.10-k6.6-mt7981b-cudy_tr3000-v1-${{ matrix.nand_size }}-sysupgrade
+      # fix python 3.12 permission
+      PIP_BREAK_SYSTEM_PACKAGES: 1
+      # timezone is 🇯🇵 Japan
+      TZ: "Asia/Tokyo"
+
+    steps:
+    - name: Precise Capacity Filtering (容量を精緻にフィルタリング)
+      run: |
+        INPUT_SIZE="${{ github.event.inputs.nand_size }}"
+        MATRIX_SIZE="${{ matrix.nand_size }}"
+        if [[ -n "$INPUT_SIZE" && "$INPUT_SIZE" != "$MATRIX_SIZE" ]]; then
+          echo "現在の規格をスキップ: $MATRIX_SIZE (目標: $INPUT_SIZE)"
+          gh run cancel ${{ github.run_id }}
+          exit 0
+        fi
+    
+    - name: Start Timer (計測開始)
+      run: |
+        echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
+
+    - name: Sync and Wait for Plugin Repo (プラグインリポジトリの同期と待機)
+      run: |
+        LAST_TS=$(date -d $(gh run list -w "$PLUGINS_SYNC" -R "$PLUGINS_REPO" -s success --limit 1 --json updatedAt -q '.[0].updatedAt // "1970-01-01"') +%s)
+        DIFF=$(( ($(date +%s) - LAST_TS) / 3600 ))
+        if [ "$DIFF" -ge 24 ]; then
+          echo "⚠️ 最終同期から ${DIFF}時間経過。同期を開始します..."
+          gh workflow run "$PLUGINS_SYNC" -R "$PLUGINS_REPO" -r "$PLUGINS_HEAD"
+          for i in {1..30}; do
+            sleep 20
+            RUN_ID=$(gh run list -w "$PLUGINS_SYNC" -R "$PLUGINS_REPO" --limit 1 --json databaseId,status -q 'map(select(.status != "completed")) | .[0].databaseId')
+            [[ -n "$RUN_ID" && "$RUN_ID" != "null" ]] && break
+          done
+          [[ -z "$RUN_ID" ]] && echo "❌ タイムアウトを検出しました" && exit 1
+          gh run watch "$RUN_ID" -R "$PLUGINS_REPO" --exit-status
+        else
+          echo "✅ 最近同期されました（${DIFF}時間前）。スキップします。"
+        fi
+
+    - name: Checkout (チェックアウト)
+      uses: actions/checkout@main
+      with:
+        fetch-depth: 0
+
+    - name: Check Server Performance (サーバー性能の確認)
+      run: |
+        echo "⚠️注意⚠️"
+        echo "サーバーのリソースは有限です。プラグインの過剰な選択はCPU高負荷の原因となります。"
+        echo -e "既知のCPUモデル（降順）: 7763，8370C，8272CL，8171M，E5-2673\n"
+        echo "-------------------------CPU 情報---------------------------"
+        echo "CPUの物理数  : $(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
+        echo "CPUコア数    : $(nproc)"
+        echo -e "CPUモデル情報:$(cat /proc/cpuinfo | grep -m1 name | awk -F: '{print $2}')\n"
+        echo "------------------------メモリ情報--------------------------"
+        echo "メモリの詳細:"
+        echo -e "$(sudo lshw -short -C memory | grep GiB)\n"
+        echo "---------------------ハードディスク情報---------------------"
+        echo "ディスク容量: $(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+        if [[ ! "$CPU_MODEL" =~ "EPYC 7763" && ! "$CPU_MODEL" =~ "EPYC 9V74" ]]; then
+          echo "❌ ハードウェア不適合、$SPEC_NAME を再待機させています..."
+          gh workflow run "${{ github.workflow }}" \
+            --ref "${{ github.ref_name }}" \
+            -f nand_size="$SPEC_NAME"
+          sleep 15
+          gh run cancel ${{ github.run_id }}
+          exit 1
+        else
+          echo "✅ ハードウェアチェック完了、実行を継続。"
+        fi
+        if [ "$FREE_SPACE" -lt 50 ]; then
+          echo "⚠️ ストレージ不足、拡張プロセスを開始。"
+          echo "needs_maximize=true" >> $GITHUB_OUTPUT
+        else
+          echo "✅ ストレージ容量正常、実行を継続。"
+          echo "needs_maximize=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Free Disk Space (ディスク空き容量の確保)
+      if: steps.check_env.outputs.needs_maximize == 'true'
+      uses: easimon/maximize-build-space@master
+      with: 
+        root-reserve-mb: 8192
+        swap-size-mb: 1
+        remove-dotnet: 'true'
+        remove-android: 'true'
+        remove-haskell: 'true'
+        remove-codeql: 'true'
+        remove-docker-images: 'true'
+
+    - name: Initialize Environment (環境の初期化)
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        sudo -E apt -yqq update
+        sudo -E apt -yqq install zip rename dos2unix libfuse-dev libcrypt-dev libncurses5-dev python3-setuptools python3-dev python3-distutils python3-netifaces file 
+        sudo bash -c 'bash <(curl -sL https://build-scripts.immortalwrt.org/init_build_environment.sh)'
+        sudo pip3 install --break-system-packages --upgrade pip
+        # sudo -E apt -yqq install cargo
+        # rustup target add aarch64-unknown-linux-musl
+        sudo timedatectl set-timezone "$TZ"
+        sudo chown $USER:$GROUPS $GITHUB_WORKSPACE
+        git config --global url."https://$ACCESS_TOKEN@github.com/0xACE8/".insteadOf "https://github.com/0xACE8/"
+        git config --global core.compression 0
+
+    - name: Clone Source Code (ソースコードのクローン)
+      working-directory: ./
+      run: |
+        df -hT $PWD
+        git clone --depth 1 $GIT_REPO_URL -b $GIT_HEAD_REF openwrt
+        # Remove China Mirrors (中国国内ミラーの削除)
+        [ -f "openwrt/scripts/projectsmirrors.json" ] && sed -i '/.cn\//d; /tencent/d; /aliyun/d' openwrt/scripts/projectsmirrors.json
+        [ -d "files" ] && rm -rf files
+        # Add annawrt-packages Repo To Feeds ()
+        ${{ secrets.FEEDS_SOURCE }}
+
+    - name: Initialize Cache Hash (キャッシュハッシュの初期化)
+      working-directory: ./openwrt
+      run: |
+        SHORT_HASH=$(md5sum feeds.conf.default | md5sum | cut -c1-7)
+        echo "CACHE_HASH=${SHORT_HASH}" >> $GITHUB_ENV
+        echo "✅ キャッシュハッシュの生成完了: ${SHORT_HASH}"
+
+    - name: Cache Toolchain (ツールチェーンのキャッシュ)
+      id: cache-toolchain
+      uses: actions/cache@v4
+      with:
+        key: ${{ env.TARGET_CHIPS }}-${{ env.CODE_SOURCES }}-${{ env.GIT_TREE_REF }}-${{ env.GIT_HEAD_REF }}-${{ env.CACHE_HASH }}-${{ env.INPUT_CCACHE == 'true' && github.run_id || 'stable' }}
+        restore-keys: |
+          ${{ env.TARGET_CHIPS }}-${{ env.CODE_SOURCES }}-${{ env.GIT_TREE_REF }}-${{ env.GIT_HEAD_REF }}-${{ env.CACHE_HASH }}-
+        path: |
+          openwrt/.cache
+          openwrt/.ccache
+          openwrt/staging_dir/host*
+          openwrt/staging_dir/tool*
+          openwrt/dl
+
+    - name: Update & Install Feeds (フィードの更新とインストール)
+      working-directory: ./openwrt
+      run: |
+        # Surgical Clean Go Cache (Goキャッシュの物理削除)
+        [ -d "dl" ] && find dl -size 0 -exec rm -f {} +
+        [ -d "dl" ] && rm -rf dl/go-mod-* 2>/dev/null || true
+        ${{ secrets[format('CUDY_TR3000_{0}_DEVICE_PATCH', env.SECRET_ID_UP)] }}
+        ./scripts/feeds update -a
+        rm -rf feeds/packages/lang/golang && git clone https://github.com/sbwml/packages_lang_golang -b 25.x feeds/packages/lang/golang
+        ./scripts/feeds install -a
+
+    - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
+      if: env.INPUT_WIFI5G == 'true'
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets.BOOST_5G_TO_25DBM }}
+
+    - name: Load Custom Configuration (カスタム設定の読み込み)
+      working-directory: ./openwrt
+      id: loadconfig
+      run: |
+        set +x
+        cat <<'EOF' > .config
+        ${{ secrets[format('CUDY_TR3000_{0}_BUILD_CONFIG', env.SECRET_ID_UP)] }}
+        EOF
+        ${{ secrets.SOURCE_PATCH }}
+        ${{ secrets.ARGON_COLORS }}
+        # Check CCache Status
+        ccache -s
+
+    - name: Update Cache (キャッシュの更新)
+      if: steps.cache-toolchain.outputs.cache-hit == 'true' || steps.cache-toolchain.outputs.cache-matched-key != ''
+      working-directory: ./openwrt
+      run: |
+        if [ -d "staging_dir/host" ]; then
+          find staging_dir -type d -name "stamp" -not -path "*target*" -exec touch {} + 2>/dev/null || true
+          sed -i 's/ $(tool.*\/stamp-compile)//;' Makefile
+          sed -i 's/ $(tool.*\/stamp-install)//;' Makefile
+          mkdir -p tmp && echo "1" > tmp/.build
+        fi
+
+    - name: Restore Config Archive (設定アーカイブの復元)
+      if: steps.loadconfig.outcome == 'success' && env.INPUT_CONFIG == 'true'
+      working-directory: ./openwrt
+      run: |
+        ${{ secrets[format('CUDY_TR3000_{0}_CONF_ARCHIVE', env.SECRET_ID_UP)] }}
+
+    - name: Download Packages (パッケージのダウンロード)
+      if: steps.loadconfig.outcome == 'success' && !cancelled()
+      working-directory: ./openwrt
+      id: package
+      run: |
+        make defconfig
+        make download -j$(nproc)
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: Keepalive Cache Refresh (キャッシュ更新のマーク付け)
+      if: env.INPUT_CCACHE == 'true'
+      run: |
+        mkdir -p openwrt/.ccache
+        date > openwrt/.ccache/keepalive_timestamp
+        echo "✅ Cache flagged for refresh. Heavy build skipped."
+
+    - name: Compile Firmware (ファームウェアのコンパイル)
+      if: env.INPUT_CCACHE != 'true'
+      working-directory: ./openwrt
+      id: compile
+      run: |
+        echo -e "$(nproc) thread compile"
+        make package/your-pkg/compile V=s EXTRA_CFLAGS="-Wno-error"
+        make -j$(nproc) || make -j1 V=s
+        echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: Update Variables (変数の更新)
+      if: steps.compile.outcome == 'success'
+      run: |
+        echo "OUTPUT_FILE=${OUTPUT_FILE}_${FILE_DATE}" >> $GITHUB_ENV
+
+    - name: Organize Files (ファイルの整理)
+      if: steps.compile.outcome == 'success'
+      id: organize
+      run: |
+        cd openwrt/bin/targets/*/*
+        FIRMWARE_FILE=$(ls *sysupgrade.* 2>/dev/null | head -n 1)
+        EXT="${FIRMWARE_FILE##*.}"
+        ls -A | grep -v "$FIRMWARE_FILE" | xargs rm -rdf
+        mv "$FIRMWARE_FILE" "${{ env.OUTPUT_FILES }}.$EXT"
+        sha512sums ${{ secrets.CHECK_SHA512 }} sha512sums "${{ env.OUTPUT_FILES }}.$EXT"
+        ${{ secrets.REPACK_IMAGE }} "${{ env.OUTPUT_FILES }}.$EXT"
+        echo "FIRMWARE=$PWD" >> $GITHUB_ENV
+
+    - name: Upload to Artifacts (Artifactに保存)
+      if: steps.organize.outcome == 'success' && env.INPUT_UP_ART == 'true'
+      uses: actions/upload-artifact@main
+      with:
+        name: ${{ env.OUTPUT_FILES }}
+        path: ${{ env.FIRMWARE }}
+
+    - name: Upload to Release (Releaseに公開)
+      if: steps.compile.outcome == 'success' && env.INPUT_UP_REL == 'true'
+      uses: softprops/action-gh-release@master
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        tag_name: ${{ env.FILE_DATE }}_${{ env.TARGET_CHIPSS }}_${{ env.TARGET_MODEL }}_${{ env.TARGET_MEDIA }}
+        name: ${{ env.TARGET_CHIPSS }}_${{ env.TARGET_MODEL }}_${{ env.TARGET_MEDIA }}_${{ env.LINUX_KERNEL }}_${{ env.FILE_DATE }}
+        files: ${{ env.FIRMWARE }}/*
+        body: |
+          **本ファームウェアは、CPU「${{ env.TARGET_CHIPSS }}」搭載のモデル「${{ env.TARGET_MODEL }}」✅ ${{ env.TARGET_MEDIA }} ✅専用です。**
+          ### 📒「${{ env.CODE_SOURCES }}」のソースコードを基にビルドされました。
+          - 🖥️ 対応機種: 　${{ env.TARGET_MODEL }}
+          - 💿 容量仕様: 　${{ env.TARGET_MEDIA }}
+          - 🐧 カーネル: 　${{ env.LINUX_KERNEL }}
+          - 👤 ソース名: 　${{ env.CODE_SOURCES }}
+          - 🌲 ソース元: 　${{ env.GIT_TREE_REF }}
+          - 🌿 ブランチ: 　${{ env.GIT_HEAD_REF }}
+          - 🔗 管理ＩＰ: 　192.168.***.1 または ${{ env.CODE_SOURCES }}.lan
+          - 🛡️ 初期パス: 　********
+          ### ⚠️ 免責事項 ⚠️
+          - ‼️ **本ファームウェアは、個人利用を目的とした非公式のカスタマイズ版です。**
+          - ⛔️ **強制フラッシュ等でデバイスが破損した場合、本リポジトリは一切の責任を負いません。自己責任で使用してください。**
+
+    - name: Upload to wenshushu (ウェンおじさんにアップロードする)
+      if: steps.compile.outcome == 'success' && steps.organize.outcome == 'success' && env.INPUT_UP_WSS == 'true'
+      working-directory: ./openwrt
+      run: |
+        curl -fsSL git.io/file-transfer | sh
+        ./transfer wss -s -p 16 -t 600 --no-progress ${FIRMWARE} 2>&1 | tee wenshushu.log
+        WENSHUSHU=$(cat wenshushu.log | grep 'Manage Link:' | cut -d' ' -f3-)
+        echo "WENSHUSHU=$WENSHUSHU" >> $GITHUB_ENV
+
+    - name: Calculate Duration
+      if: always() && env.INPUT_TGINFO == 'true' && env.INPUT_CCACHE != 'true'
+      run: |
+        END_TIME=$(date +%s)
+        START_TIME=${{ env.START_TIME }}
+        TOTAL_SECONDS=$((END_TIME - START_TIME))
+        H=$((TOTAL_SECONDS / 3600))
+        M=$(((TOTAL_SECONDS % 3600) / 60))
+        S=$((TOTAL_SECONDS % 60))
+        echo "DURATION=$(printf "%02d:%02d:%02d" $H $M $S)" >> $GITHUB_ENV
+
+    - name: Final Report & TG Notify (総合ステータス通知)
+      if: always() && env.INPUT_TGINFO == 'true' && env.INPUT_CCACHE != 'true'
+      run: |
+        CPU_MODEL=$(cat /proc/cpuinfo | grep 'model name' | uniq | head -n 1)
+        if [[ ! "$CPU_MODEL" =~ "EPYC 7763" && ! "$CPU_MODEL" =~ "EPYC 9V74" ]]; then
+          exit 0
+        fi
+        get_stat() { [ "$1" == "true" ] && echo "✅" || echo "⏺️"; }
+        
+        [ "${{ steps.compile.outcome }}" == "success" ] && BUILD_STAT="✅ビルドが正常に完了しました！✅" || BUILD_STAT="❌ ビルドが失敗しました！ ❌"
+
+        if [[ -n "$WENSHUSHU" ]]; then
+            STAT_WEN="✅"
+            WEN_MSG="•☁️%20文氏転送:%0A　%20　%20　$WENSHUSHU"
+        elif [[ "$INPUT_UP_WSS" == "true" ]] || [[ "$GITHUB_EVENT_ACTION" == *"upload_wenshushu"* ]]; then
+            STAT_WEN="❌ (失敗)" 
+            WEN_MSG=""
+        else
+            STAT_WEN="⏺️"
+            WEN_MSG=""
+        fi
+      
+        STAT_LIST="•⚙️%20配置复元:　%20　%20　$(get_stat "${{ github.event.inputs.restore_config }}")%0A"
+        STAT_LIST="${STAT_LIST}•🛜%20信号增幅:　%20　%20　$(get_stat "${{ github.event.inputs.boost_wifi_5g }}")%0A"
+        STAT_LIST="${STAT_LIST}•💾%20构建成果:　%20　%20　$(get_stat "${{ github.event.inputs.upload_firmware }}")%0A"
+        STAT_LIST="${STAT_LIST}•🚀%20公开配信:　%20　%20　$(get_stat "${{ github.event.inputs.upload_release }}")%0A"
+        STAT_LIST="${STAT_LIST}•☁️%20文氏転送:　%20　%20　${STAT_WEN}%0A"
+        #STAT_LIST="${STAT_LIST}•🧹%20缓存清理:　%20　%20　$(get_stat "${{ github.event.inputs.clean_cache }}")"
+
+        MSG="${BUILD_STAT}"
+        MSG="${MSG}%0A＝＝＝＝＝  基 本 情 報 ＝＝＝＝＝＝"
+        MSG="${MSG}%0A•🖥️%20対応機種:%0A　%20　%20　${TARGET_MODEL}"
+        MSG="${MSG}%0A•💿%20容量仕様:%0A　%20　%20　${TARGET_MEDIA}"
+        MSG="${MSG}%0A•🐧%20カーネル:%0A　%20　%20　${LINUX_KERNEL}"
+        MSG="${MSG}%0A•👤%20ソース名:%0A　%20　%20　${CODE_SOURCES}"
+        MSG="${MSG}%0A•🌲%20ソース元:%0A　%20　%20　${GIT_TREE_REF}"
+        MSG="${MSG}%0A•🌿%20ブランチ:%0A　%20　%20　${GIT_HEAD_REF}%0A"
+
+        MSG="${MSG}%0A＝＝＝＝＝ 状 態 一 覧 ＝＝＝＝＝＝%0A${STAT_LIST}%0A%0A"
+        MSG="${MSG}＝＝＝＝＝ 結 果 情 報 ＝＝＝＝＝＝%0A"
+        MSG="${MSG}•⏱️%20実行時間:　%20　%20　${{ env.DURATION }}%0A"
+        
+        if [ "${{ steps.compile.outcome }}" == "success" ]; then
+          MSG="${MSG}•📦%20ファイル:%0A　%20　%20　${OUTPUT_FILES}%0A"
+
+          if [[ -n "$WEN_MSG" ]]; then
+              MSG="${MSG}${WEN_MSG}"
+          fi
+
+        else
+          MSG="${MSG}•❌%20失敗時刻:　%20　$(date +'%Y-%m-%d %H:%M')%0A"
+        fi
+
+        MSG="${MSG}%0A＝＝＝ ＝＝＝ ＝＝＝ ＝＝＝ ＝＝＝ "
+        
+        curl -s -o /dev/null -X GET "https://api.telegram.org/bot${{ secrets.TGRAM_BOTKEY }}/sendMessage" \
+          -d chat_id="${{ secrets.TGRAM_CHATID }}" \
+          -d text="$(echo "$MSG" | sed 's/ /%20/g')"
+
+    - name: Delete Old Workflows (古いワークフローの削除)
+      uses: Mattraks/delete-workflow-runs@main
+      with:
+        token: ${{ secrets.ACCESS_TOKEN }}
+        repository: ${{ github.repository }}
+        retain_days: 0
+        keep_minimum_runs: 0
+        delete_workflow_pattern: "cudy_tr3000-v1"
+ 
+    - name: Delete Old Releases (古いリリースの削除)
+      if: steps.compile.outcome == 'success' && env.INPUT_UP_REL == 'true'
+      uses: dev-drprasad/delete-older-releases@master
+      with:
+        keep_latest: 2
+        delete_tags: true
+        delete_tag_pattern: "${{ env.TARGET_CHIPSS }}_${{ env.TARGET_MODEL }}" 
+    
