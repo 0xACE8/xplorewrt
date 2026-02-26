@@ -121,23 +121,23 @@ jobs:
       run: |
         echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
 
-    - name: Sync and Wait for Plugin Repo (プラグインリポジトリの同期と待機)
-      run: |
-        LAST_TS=$(date -d $(gh run list -w "$PLUGINS_SYNC" -R "$PLUGINS_REPO" -s success --limit 1 --json updatedAt -q '.[0].updatedAt // "1970-01-01"') +%s)
-        DIFF=$(( ($(date +%s) - LAST_TS) / 3600 ))
-        if [ "$DIFF" -ge 24 ]; then
-          echo "⚠️ 最終同期から ${DIFF}時間経過。同期を開始します..."
-          gh workflow run "$PLUGINS_SYNC" -R "$PLUGINS_REPO" -r "$PLUGINS_HEAD"
-          for i in {1..30}; do
-            sleep 20
-            RUN_ID=$(gh run list -w "$PLUGINS_SYNC" -R "$PLUGINS_REPO" --limit 1 --json databaseId,status -q 'map(select(.status != "completed")) | .[0].databaseId')
-            [[ -n "$RUN_ID" && "$RUN_ID" != "null" ]] && break
-          done
-          [[ -z "$RUN_ID" ]] && echo "❌ タイムアウトを検出しました" && exit 1
-          gh run watch "$RUN_ID" -R "$PLUGINS_REPO" --exit-status
-        else
-          echo "✅ 最近同期されました（${DIFF}時間前）。スキップします。"
-        fi
+    #- name: Sync and Wait for Plugin Repo (プラグインリポジトリの同期と待機)
+      #run: |
+        #LAST_TS=$(date -d $(gh run list -w "$PLUGINS_SYNC" -R "$PLUGINS_REPO" -s success --limit 1 --json updatedAt -q '.[0].updatedAt // "1970-01-01"') +%s)
+        #DIFF=$(( ($(date +%s) - LAST_TS) / 3600 ))
+        #if [ "$DIFF" -ge 24 ]; then
+          #echo "⚠️ 最終同期から ${DIFF}時間経過。同期を開始します..."
+          #gh workflow run "$PLUGINS_SYNC" -R "$PLUGINS_REPO" -r "$PLUGINS_HEAD"
+          #for i in {1..30}; do
+            #sleep 20
+            #RUN_ID=$(gh run list -w "$PLUGINS_SYNC" -R "$PLUGINS_REPO" --limit 1 --json databaseId,status -q 'map(select(.status != "completed")) | .[0].databaseId')
+            #[[ -n "$RUN_ID" && "$RUN_ID" != "null" ]] && break
+          #done
+          #[[ -z "$RUN_ID" ]] && echo "❌ タイムアウトを検出しました" && exit 1
+          #gh run watch "$RUN_ID" -R "$PLUGINS_REPO" --exit-status
+        #else
+          #echo "✅ 最近同期されました（${DIFF}時間前）。スキップします。"
+        #fi
 
     - name: Checkout (チェックアウト)
       uses: actions/checkout@main
