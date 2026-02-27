@@ -66,10 +66,10 @@ jobs:
       BUILD_CONFIG: ${{ secrets[format('CUDY_TR3000_{0}_PONLY2410_K66_PROFILE', matrix.nand_size == '128mb' && '128MB' || (matrix.nand_size == '256mb' && '256MB' || '512MB'))] }}
       CONF_ARCHIVE: ${{ secrets.CUDY_TR3000_COMON_PONLY2410_K66_ARCHIVE }}
       # repository & branch
-      GIT_REPO_URL: ${{ secrets.REPO_PONLY2410_K66_LINK }}
-      GIT_TREE_REF: ${{ secrets.REPO_PONLY2410_K66_TREE }}
-      GIT_HEAD_REF: ${{ secrets.REPO_PONLY2410_K66_HEAD }}
-      SOURCE_PATCH: ${{ secrets.REPO_PONLY2410_K66_DIFF }}
+      GIT_REPO_URL: ${{ secrets.PONLY2410_K66_REPO_LINK }}
+      GIT_TREE_REF: ${{ secrets.PONLY2410_K66_REPO_TREE }}
+      GIT_HEAD_REF: ${{ secrets.PONLY2410_K66_REPO_HEAD }}
+      SOURCE_PATCH: ${{ secrets.PONLY2410_K66_REPO_DIFF }}
       # token
       GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       # feeds source & check security
