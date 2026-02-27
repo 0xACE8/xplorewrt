@@ -235,6 +235,7 @@ jobs:
         [ -d "dl" ] && find dl -size 0 -exec rm -f {} +
         [ -d "dl" ] && rm -rf dl/go-mod-* 2>/dev/null || true
         echo "clean go cache done"
+        echo "${{ env.DEVICE_PATCH }}"
         ${{ env.DEVICE_PATCH }}
         echo "device patch done"
         ./scripts/feeds update -a
