@@ -207,13 +207,9 @@ jobs:
       id: loadconfig
       run: |
         set +x
-        cat <<'EOF' > .config
         ${{ secrets.REDMI_AX6000_512MB_PONLY2410_K66_PROFILE }}
-        EOF
         ${{ secrets.PONLY2410_K66_REPO_DIFF }}
         ${{ secrets.ARGON_THEME_XIAOMI }}
-        sed -i 's/download-ci-llvm=true/download-ci-llvm=false/g' feeds/packages/lang/rust/Makefile
-        cat feeds/packages/lang/rust/Makefile
         # Check CCache Status
         ccache -s
 
