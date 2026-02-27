@@ -9,7 +9,7 @@
 # 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
 #
 
-name: Build redmi_ax6000_512mb xplorewrt po24.10 snapshot kernel 6.6.95 actions.
+name: Build redmi_ax6000_512mb ponly 24.10ss kernel 6.6.95 actions.
 
 on:
   workflow_dispatch:
@@ -29,11 +29,11 @@ on:
       upload_release:
         description: 'Upload FW to Release.. 🇯🇵 Releaseに公開'
         type: boolean
-        default: false
+        default: true
       upload_wenshushu:
         description: 'Upload FW to WENSHUSHU 🇯🇵 文叔叔に転送'
         type: boolean
-        default: false  
+        default: true
       telegram_notify:
         description: 'Telegram Notification. 🇯🇵 Telegram通知'
         type: boolean
