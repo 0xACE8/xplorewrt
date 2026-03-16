@@ -1,0 +1,288 @@
+#
+# Copyright (c) 2019-2026 0xACE8
+#
+# 本ソフトウェアはフリーソフトウェアであり、MITライセンスの下で公開されています。
+# 詳細については /LICENSE を参照してください。
+#
+# https://github.com/0xACE8
+#
+# 説明: GitHub Actionsのモジュール化を活用し、プライバシーとセキュリティを確保したOpenWrtビルド。
+#
+
+name: Build xiaomi_redmi-ax6000 chdev 25.12-snapshot kernel 6.12 actions.
+
+on:
+  workflow_dispatch:
+    inputs:
+
+      #restore_config:
+      #  description: 'RESTORE_BAKCONF. 🇯🇵 環境設定復元'
+      #  type: boolean
+      #  default: true
+      boost_wifi_5g:
+        description: 'BOOST_WIFI5G_SG. 🇯🇵 ５Ｇ信号増幅'
+        type: boolean
+        default: false
+      upload_firmware:
+        description: 'UPLOAD_ARTIFACT. 🇯🇵 成果物の保存'
+        type: boolean
+        default: false
+      upload_release:
+        description: 'UPLOAD_RELEASES. 🇯🇵 リリース公開'
+        type: boolean
+        default: true
+      upload_wenshushu:
+        description: 'UPLOAD_TO_WENSS. 🇯🇵 文叔叔へ転送'
+        type: boolean
+        default: true
+      telegram_notify:
+        description: 'TELEGRAM_NOTIFY. 🇯🇵 ＴＧ通知送信'
+        type: boolean
+        default: true
+
+env:
+  ## hardware & repo info
+  TARGET_MODEL:         xiaomi_redmi-ax6000
+  TARGET_CHIPS:         mt7986a
+  TARGET_MEDIA:         512mb_nand
+  OUTPUT_FILES:         xplorewrt-25.12-ss-mt7986a-xiaomi_redmi-ax6000-512mb_nand
+  TZ: "Asia/Tokyo"
+  ## github token
+  GITHUB_TOKEN:         ${{ secrets.ACCESS_TOKEN }}
+  ACCESS_TOKEN:         ${{ secrets.ACCESS_TOKEN }}
+  RUN_WORKFLOW:         ${{ github.workflow }}
+  RUN_REF_NAME:         ${{ github.ref_name }}
+  RUN_REF_REPO:         ${{ github.repository }}
+  RUNID_NUMBER:         ${{ github.run_id }}
+  PRIVATE_DATA:         ${{ secrets.XPLOREWRT_DTCORE }}
+  ## immortalwrt source
+  GIT_REPO_URL:         ${{ secrets.CHASEYDEV_REBASE }}
+  ## immortalwrt 25.12
+  GIT_HEAD_REF:         25.12-dev
+  PLUGINS_2512:         ${{ github.workspace }}/${{ secrets.PLUGINS_2512_XPL }}
+  PATCH_IM2512:         ${{ github.workspace }}/${{ secrets.SRC_PATCH_IM2512 }}
+  FEEDS_IM2512:         ${{ github.workspace }}/${{ secrets.ADD_FEEDS_IM2512 }}
+  ## github ci scripts
+  CHECK_SERVER:         ${{ github.workspace }}/${{ secrets.TEST_SERVER_PERF }}
+  INIT_ENV_VAR:         ${{ github.workspace }}/${{ secrets.INIT_ENVIRONMENT }}
+  REMOV_CN_SRC:         ${{ github.workspace }}/${{ secrets.REMOVE_CN_SOURCE }}
+  GET_KER_VERS:         ${{ github.workspace }}/${{ secrets.GET_KER_PATCHVER }}
+  EXPAND_SPACE:         ${{ github.workspace }}/${{ secrets.FREE_DISKS_SPACE }}
+  BOOST_WIFI5G:         ${{ github.workspace }}/${{ secrets.BOOST_WIFI5G_SIG }}
+  FIRMWARE_ORG:         ${{ github.workspace }}/${{ secrets.ORGANIZE_FW_FILE }}
+  CALC_RUNTIME:         ${{ github.workspace }}/${{ secrets.CALC_RUNING_TIME }}
+  ## device configure
+  PRIVATEPATCH:         ${{ github.workspace }}/${{ secrets.PRIVATE_SETPATCH }}
+  DEVICE_PATCH:         ${{ secrets.DEVICE_DIFFPATCH }}
+  BUILD_CONFIG:         ${{ secrets.BUILD_DIFFCONFIG }}
+  BACKUP_FILES:         ${{ secrets.BACKUP_CONFIGURE }}
+  ARGON_COLORS:         ${{ secrets.ARGON_THEMECOLOR }}
+  ## upload firmware
+  UPTO_RELEASE:         ${{ github.workspace }}/${{ secrets.UPLOADTO_RELEASE }}
+  UP_WENSHUSHU:         ${{ github.workspace }}/${{ secrets.UPLOAD_WENSHUSHU }}
+  ## cache repo
+  CACHE_REPOSI:         ${{ secrets.CACHE_REPOSITORY }}
+  UPLOAD_CACHE:         ${{ github.workspace }}/${{ secrets.UP_COMPILE_CACHE }}
+  DWLOAD_CACHE:         ${{ github.workspace }}/${{ secrets.DW_STORAGE_CACHE }}
+  ## telegram bot
+  TGRAM_NOTIFY:         ${{ github.workspace }}/${{ secrets.TELEGRAM_PUSH_TO }}
+  TGRAM_CHATID:         ${{ secrets.TELEGRAM_CHAT_ID }}
+  ## input status
+  INPUT_CONFIG:         ${{ github.event.inputs.restore_config }}
+  INPUT_WIFI5G:         ${{ github.event.inputs.boost_wifi_5g }}
+  INPUT_UP_ART:         ${{ github.event.inputs.upload_firmware }}
+  INPUT_UP_REL:         ${{ github.event.inputs.upload_release }}
+  INPUT_UP_WSS:         ${{ github.event.inputs.upload_wenshushu }}
+  INPUT_NOTIFY:         ${{ github.event.inputs.telegram_notify }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    permissions: write-all
+
+    steps:
+    - name: Start Timer (計測開始)
+      run: |
+        echo "START_TIME=$(date +%s)" >> $GITHUB_ENV
+
+    - name: Checkout Repo A (チェックアウト リポジトリ)
+      uses: actions/checkout@main
+
+    - name: Checkout Repo B (チェックアウト リポジトリ データ)
+      uses: actions/checkout@main
+      with:
+        repository: ${{ env.PRIVATE_DATA }}
+        token: ${{ env.GITHUB_TOKEN }}
+        path: 'private_data'
+
+    - name: Delete Old Workflows (古いワークフローの削除)
+      uses: Mattraks/delete-workflow-runs@v2.1.0
+      with:
+        token: ${{ env.ACCESS_TOKEN }}
+        repository: ${{ env.RUN_REF_REPO }}
+        retain_days: 0
+        keep_minimum_runs: 0
+        delete_workflow_pattern: "xiaomi_redmi-ax6000 chdev 25.12-snapshot"
+
+    - name: Check Server Performance (サーバー性能の確認)
+      id: check_env
+      run: |
+        find ${{ github.workspace }}/private_data -name "*.sh" -exec chmod +x {} +
+        ${{ env.CHECK_SERVER }}
+
+    - name: Sync and Wait for Plugin Repo (プラグインリポジトリの同期と待機)
+      run: |
+        ${{ env.PLUGINS_2512 }}
+
+    - name: Initialization Environment  (環境の初期化)
+      id: init
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        ${{ env.INIT_ENV_VAR }} >/dev/null 2>&1
+
+    - name: Free Disk Space (ディスク空き容量の確保)
+      run: |
+        ${{ env.EXPAND_SPACE }} >/dev/null 2>&1
+        df -Th
+
+    - name: Clone Source Code (ソースコードのクローン)
+      working-directory: ./
+      run: |
+        df -hT /build
+        git clone --depth 1 --single-branch $GIT_REPO_URL -b $GIT_HEAD_REF openwrt
+        
+        # Remove China Mirrors (中国ソースの削除)
+        ${{ env.REMOV_CN_SRC }}
+        # add feeds repo
+        ${{ env.FEEDS_IM2512 }}
+        # get kernel version
+        ${{ env.GET_KER_VERS }}
+        # add new env
+        echo "CACHE_TAG_ID=cache-${OUTPUT_FILES}" >> $GITHUB_ENV
+
+    - name: Restore ccache from Private Repo
+      working-directory: ./openwrt
+      env:
+        GH_TOKEN: ${{ env.ACCESS_TOKEN }}
+      run: |
+        ${{ env.DWLOAD_CACHE }}
+
+    - name: Update & Install Feeds (フィードの更新とインストール)
+      working-directory: ./openwrt
+      run: |
+        ./scripts/feeds update -a
+        rm -rf feeds/packages/lang/rust && git clone https://github.com/0xACE8/packages_lang_rust feeds/packages/lang/rust
+        rm -rf feeds/packages/lang/golang && git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
+        ./scripts/feeds install -a
+        # device patch
+        ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.DEVICE_PATCH }}
+
+    - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
+      if: env.INPUT_WIFI5G == 'true'
+      working-directory: ./openwrt
+      run: |
+        ${{ env.BOOST_WIFI5G }}
+
+    - name: Load Custom Configuration (カスタム設定の読み込み)
+      working-directory: ./openwrt
+      id: loadconfig
+      run: |
+        cp -rf ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.BUILD_CONFIG }} .config
+        # immortalwrt patch
+        ${{ env.PATCH_IM2512 }}
+        # change argon style
+        ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.ARGON_COLORS }}
+
+    - name: Restore Config Archive (設定アーカイブの復元)
+      if: steps.loadconfig.outcome == 'success' && env.INPUT_CONFIG == 'true'
+      working-directory: ./openwrt
+      run: |
+        mv ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.BACKUP_FILES }} files
+        echo "OUTPUT_FILES=$OUTPUT_FILES-configured" >> $GITHUB_ENV
+
+    - name: Download Packages (パッケージのダウンロード)
+      if: steps.loadconfig.outcome == 'success' && !cancelled()
+      working-directory: ./openwrt
+      id: package
+      run: |
+        make defconfig
+        make download -j$(nproc)
+        find dl -size -1024c -exec ls -l {} \;
+        find dl -size -1024c -exec rm -f {} \;
+
+    - name: Compile Firmware (ファームウェアのコンパイル)
+      working-directory: ./openwrt
+      id: compile
+      env:
+        export CARGO_PROFILE_RELEASE_OPT_LEVEL: "3"
+        export CARGO_PROFILE_RELEASE_LTO: "true"
+        export CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "1"
+        # export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: "-C target-cpu=cortex-a53 -C target-feature=+crypto,+crc,+neon"
+      run: |
+        echo -e "$(nproc) thread compile"
+        make -j$(nproc) || make -j1 V=s
+        echo "FILE_DATE=$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
+
+    - name: Organize Files (ファイルの整理)
+      if: steps.compile.outcome == 'success'
+      id: organize
+      run: |
+        cd ${{ github.workspace }}/openwrt/bin/targets/*/*
+        ${{ env.FIRMWARE_ORG }}
+        # generate release_body.txt
+        cd ${{ github.workspace }}/openwrt
+        ${{ env.UPTO_RELEASE }}
+
+    - name: Upload to Artifacts (Artifactに保存)
+      if: steps.organize.outcome == 'success' && env.INPUT_UP_ART == 'true'
+      uses: actions/upload-artifact@main
+      with:
+        name: ${{ env.OUTPUT_FILES }}
+        path: ${{ env.FIRMWARE }}
+
+    - name: Upload to Release (Releaseに公開)
+      if: steps.compile.outcome == 'success' && env.INPUT_UP_REL == 'true'
+      uses: softprops/action-gh-release@master
+      with:
+        token: ${{ env.ACCESS_TOKEN }}
+        tag_name: ${{ env.TAG_NAME }}
+        name: ${{ env.TARGET_CHIPS }}_${{ env.TARGET_MODEL }}_${{ env.TARGET_MEDIA }}_${{ env.LINUX_KERNEL }}_${{ env.FILE_DATE }}
+        files: ${{ env.FIRMWARE }}/*
+        body_path: ${{ github.workspace }}/openwrt/release_body.txt
+
+    - name: Upload to WenShuShu (ウェンおじさんにアップロードする)
+      if: steps.compile.outcome == 'success' && steps.organize.outcome == 'success' && env.INPUT_UP_WSS == 'true'
+      working-directory: ./openwrt
+      run: |
+        ${{ env.UP_WENSHUSHU }}
+
+    - name: Calculate Duration (実行時間の計算)
+      if: always() && env.INPUT_NOTIFY == 'true'
+      run: |
+        ${{ env.CALC_RUNTIME }} "${{ env.START_TIME }}"
+
+    - name: Final Report & TG Notify (総合ステータス通知)
+      if: always() && env.INPUT_NOTIFY == 'true'
+      env:
+        COMP_OUTCOME: ${{ steps.compile.outcome }}
+      run: |
+        ${{ env.TGRAM_NOTIFY }}
+
+    - name: Archive and Upload CACHE (自動生成された究極のビルドキャッシュ)
+      if: success() && !cancelled()
+      working-directory: ./openwrt
+      env:
+        GH_TOKEN: ${{ env.ACCESS_TOKEN }}
+      run: |
+        ${{ env.UPLOAD_CACHE }} "${{ env.CACHE_TAG_ID }}" "${{ env.CACHE_REPOSI }}"
+
+    - name: Delete Old Releases (古いリリースの削除)
+      if: steps.compile.outcome == 'success' && env.INPUT_UP_REL == 'true'
+      uses: dev-drprasad/delete-older-releases@master
+      with:
+        keep_latest: 2
+        delete_tags: true
+        delete_tag_pattern: "${{ env.TARGET_MODEL }}_${{ env.GIT_HEAD_REF }}" 
+
