@@ -141,7 +141,7 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        ${{ env.INIT_ENV_VAR }} >/dev/null 2>&1
+        ${{ env.INIT_ENV_VAR }}
 
     - name: Free Disk Space (ディスク空き容量の確保)
       run: |
