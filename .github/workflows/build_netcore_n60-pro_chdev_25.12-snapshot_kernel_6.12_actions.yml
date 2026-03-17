@@ -55,6 +55,7 @@ env:
   RUN_REF_REPO:         ${{ github.repository }}
   RUNID_NUMBER:         ${{ github.run_id }}
   PRIVATE_DATA:         ${{ secrets.XPLOREWRT_DTCORE }}
+  FIRMWARE_SHA:         ${{ secrets.FIREMWARE_SHA512 }}
   ## immortalwrt source
   GIT_REPO_URL:         ${{ secrets.CHASEYDEV_REBASE }}
   ## immortalwrt 25.12
