@@ -125,12 +125,12 @@ jobs:
         repository: ${{ env.RUN_REF_REPO }}
         retain_days: 0
         keep_minimum_runs: 0
-        delete_workflow_pattern: "xiaomi_redmi-ax6000 chdev 25.12-snapshot"
+        delete_workflow_pattern: "netcore_n60-pro chdev 25.12-snapshot"
 
     - name: Check Server Performance (サーバー性能の確認)
       id: check_env
       run: |
-        find ${{ github.workspace }}/private_data -name "*.sh" -exec chmod +x {} +
+        find ${{ github.workspace }}/private_data -name "*.sh" -exec chmod +x {} +  >/dev/null 2>&1
         ${{ env.CHECK_SERVER }}
 
     - name: Sync and Wait for Plugin Repo (プラグインリポジトリの同期と待機)
@@ -174,10 +174,10 @@ jobs:
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
       run: |
-        ./scripts/feeds update -a
+        ./scripts/feeds update -a  >/dev/null 2>&1
         # packages lang update (rust and goland)
         ${{ env.LANGS_UPDATE }}
-        ./scripts/feeds install -a
+        ./scripts/feeds install -a  >/dev/null 2>&1
         # device patch
         ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.DEVICE_PATCH }}
 
@@ -221,7 +221,7 @@ jobs:
         export CARGO_PROFILE_RELEASE_OPT_LEVEL: "3"
         export CARGO_PROFILE_RELEASE_LTO: "true"
         export CARGO_PROFILE_RELEASE_CODEGEN_UNITS: "1"
-        # export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: "-C target-cpu=cortex-a53 -C target-feature=+crypto,+crc,+neon"
+        export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: "-C target-cpu=cortex-a53 -C target-feature=+crypto,+crc,+neon"
       run: |
         echo -e "$(nproc) thread compile"
         make -j$(nproc) || make -j1 V=s
