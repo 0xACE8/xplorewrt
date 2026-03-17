@@ -68,6 +68,7 @@ env:
   INIT_ENV_VAR:         ${{ github.workspace }}/${{ secrets.INIT_ENVIRONMENT }}
   REMOV_CN_SRC:         ${{ github.workspace }}/${{ secrets.REMOVE_CN_SOURCE }}
   GET_KER_VERS:         ${{ github.workspace }}/${{ secrets.GET_KER_PATCHVER }}
+  LANGS_UPDATE:         ${{ github.workspace }}/${{ secrets.PAK_LANGS_UPDATE }}
   EXPAND_SPACE:         ${{ github.workspace }}/${{ secrets.FREE_DISKS_SPACE }}
   BOOST_WIFI5G:         ${{ github.workspace }}/${{ secrets.BOOST_WIFI5G_SIG }}
   FIRMWARE_ORG:         ${{ github.workspace }}/${{ secrets.ORGANIZE_FW_FILE }}
