@@ -68,13 +68,13 @@ env:
   INIT_ENV_VAR:         ${{ github.workspace }}/${{ secrets.INIT_ENVIRONMENT }}
   REMOV_CN_SRC:         ${{ github.workspace }}/${{ secrets.REMOVE_CN_SOURCE }}
   GET_KER_VERS:         ${{ github.workspace }}/${{ secrets.GET_KER_PATCHVER }}
-  LANGS_UPDATE:         ${{ github.workspace }}/${{ secrets.PAK_LANGS_UPDATE }}
   EXPAND_SPACE:         ${{ github.workspace }}/${{ secrets.FREE_DISKS_SPACE }}
   BOOST_WIFI5G:         ${{ github.workspace }}/${{ secrets.BOOST_WIFI5G_SIG }}
   FIRMWARE_ORG:         ${{ github.workspace }}/${{ secrets.ORGANIZE_FW_FILE }}
   CALC_RUNTIME:         ${{ github.workspace }}/${{ secrets.CALC_RUNING_TIME }}
   ## device configure
   PRIVATEPATCH:         ${{ github.workspace }}/${{ secrets.PRIVATE_SETPATCH }}
+  DEVICE_SUPPT:         ${{ secrets.DEVICE_A_SUPPORT }}
   DEVICE_PATCH:         ${{ secrets.DEVICE_DIFFPATCH }}
   BUILD_CONFIG:         ${{ secrets.BUILD_DIFFCONFIG }}
   BACKUP_FILES:         ${{ secrets.BACKUP_CONFIGURE }}
@@ -142,7 +142,7 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        ${{ env.INIT_ENV_VAR }}
+        ${{ env.INIT_ENV_VAR }} >/dev/null 2>&1
 
     - name: Free Disk Space (ディスク空き容量の確保)
       run: |
@@ -161,6 +161,8 @@ jobs:
         ${{ env.FEEDS_IM2512 }}
         # get kernel version
         ${{ env.GET_KER_VERS }}
+        # add device support
+        ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.DEVICE_SUPPT }}
         # add new env
         echo "CACHE_TAG_ID=cache-${OUTPUT_FILES}" >> $GITHUB_ENV
 
@@ -170,13 +172,14 @@ jobs:
         GH_TOKEN: ${{ env.ACCESS_TOKEN }}
       run: |
         ${{ env.DWLOAD_CACHE }}
+        [ -d ".sccache" ] && rm -rf .sccache
 
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
       run: |
         ./scripts/feeds update -a
-        # packages lang update (rust and goland)
-        ${{ env.LANGS_UPDATE }}
+        rm -rf feeds/packages/lang/rust && git clone https://github.com/0xACE8/packages_lang_rust feeds/packages/lang/rust
+        rm -rf feeds/packages/lang/golang && git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
         ./scripts/feeds install -a
         # device patch
         ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.DEVICE_PATCH }}
