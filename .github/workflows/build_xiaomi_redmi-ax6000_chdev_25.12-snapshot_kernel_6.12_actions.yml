@@ -172,7 +172,8 @@ jobs:
         GH_TOKEN: ${{ env.ACCESS_TOKEN }}
       run: |
         ${{ env.DWLOAD_CACHE }}
-        [ -d ".sccache" ] && rm -rf .sccache
+        ls
+        [ -d ".sccache" ] && rm -rf .sccache || true
 
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
