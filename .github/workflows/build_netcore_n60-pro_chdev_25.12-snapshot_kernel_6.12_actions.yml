@@ -65,11 +65,11 @@ env:
   FEEDS_IM2512:         ${{ github.workspace }}/${{ secrets.ADD_FEEDS_IM2512 }}
   ## github ci scripts
   CHECK_SERVER:         ${{ github.workspace }}/${{ secrets.TEST_SERVER_PERF }}
+  EXPAND_SPACE:         ${{ github.workspace }}/${{ secrets.FREE_DISKS_SPACE }}
   INIT_ENV_VAR:         ${{ github.workspace }}/${{ secrets.INIT_ENVIRONMENT }}
   REMOV_CN_SRC:         ${{ github.workspace }}/${{ secrets.REMOVE_CN_SOURCE }}
   GET_KER_VERS:         ${{ github.workspace }}/${{ secrets.GET_KER_PATCHVER }}
   LANGS_UPDATE:         ${{ github.workspace }}/${{ secrets.PAK_LANGS_UPDATE }}
-  EXPAND_SPACE:         ${{ github.workspace }}/${{ secrets.FREE_DISKS_SPACE }}
   BOOST_WIFI5G:         ${{ github.workspace }}/${{ secrets.BOOST_WIFI5G_SIG }}
   FIRMWARE_ORG:         ${{ github.workspace }}/${{ secrets.ORGANIZE_FW_FILE }}
   CALC_RUNTIME:         ${{ github.workspace }}/${{ secrets.CALC_RUNING_TIME }}
@@ -170,7 +170,8 @@ jobs:
         GH_TOKEN: ${{ env.ACCESS_TOKEN }}
       run: |
         ${{ env.DWLOAD_CACHE }}
-        [ -d ".sccache" ] && rm -rf .sccache
+        ls
+        [ -d ".sccache" ] && rm -rf .sccache || true
 
     - name: Update & Install Feeds (フィードの更新とインストール)
       working-directory: ./openwrt
