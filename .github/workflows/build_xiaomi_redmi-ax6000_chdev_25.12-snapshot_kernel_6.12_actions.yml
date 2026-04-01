@@ -22,7 +22,7 @@ on:
       boost_wifi_5g:
         description: 'BOOST_WIFI5G_SG. 🇯🇵 ５Ｇ信号増幅'
         type: boolean
-        default: false
+        default: true
       upload_firmware:
         description: 'UPLOAD_ARTIFACT. 🇯🇵 成果物の保存'
         type: boolean
@@ -190,7 +190,8 @@ jobs:
       if: env.INPUT_WIFI5G == 'true'
       working-directory: ./openwrt
       run: |
-        ${{ env.BOOST_WIFI5G }}
+        mv ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.BACKUP_FILES }} files
+        sed -i '/rm -rf/d' package/mtk/drivers/mt_wifi/Makefile
 
     - name: Load Custom Configuration (カスタム設定の読み込み)
       working-directory: ./openwrt
