@@ -59,7 +59,7 @@ env:
   ## immortalwrt source
   GIT_REPO_URL:         ${{ secrets.CHASEYDEV_REBASE }}
   ## immortalwrt 25.12
-  GIT_HEAD_REF:         25.12-dev
+  GIT_HEAD_REF:         openwrt-24.10-6.6
   PLUGINS_2512:         ${{ github.workspace }}/${{ secrets.PLUGINS_2512_XPL }}
   PATCH_IM2512:         ${{ github.workspace }}/${{ secrets.SRC_PATCH_IM2512 }}
   FEEDS_IM2512:         ${{ github.workspace }}/${{ secrets.ADD_FEEDS_IM2512 }}
