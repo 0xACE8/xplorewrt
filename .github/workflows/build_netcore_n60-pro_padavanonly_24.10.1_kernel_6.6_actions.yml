@@ -75,8 +75,8 @@ env:
   CALC_RUNTIME:         ${{ github.workspace }}/${{ secrets.CALC_RUNING_TIME }}
   ## device configure
   PRIVATEPATCH:         ${{ github.workspace }}/${{ secrets.PRIVATE_SETPATCH }}
-  DEVICE_PATCH:         ${{ secrets.DEVICE_DIFFPATCH }}
-  BUILD_CONFIG:         ${{ secrets.BUILD_DIFFCONFIG }}
+  DEVICE_PATCH:         ${{ secrets.DEVICE_PDO_PATCH }}
+  BUILD_CONFIG:         ${{ secrets.BUILD_PO2410CONF }}
   BACKUP_FILES:         ${{ secrets.BACKUP_CONFIGURE }}
   ARGON_COLORS:         ${{ secrets.ARGON_THEMECOLOR }}
   ## upload firmware
