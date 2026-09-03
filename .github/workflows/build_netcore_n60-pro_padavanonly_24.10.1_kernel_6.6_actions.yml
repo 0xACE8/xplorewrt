@@ -61,7 +61,7 @@ env:
   ## immortalwrt 25.12
   GIT_HEAD_REF:         openwrt-24.10-6.6
   PLUGINS_2512:         ${{ github.workspace }}/${{ secrets.PLUGINS_2512_XPL }}
-  PATCH_IM2512:         ${{ github.workspace }}/${{ secrets.SRC_PATCH_IM2512 }}
+  PATCH_IM2410:         ${{ github.workspace }}/${{ secrets.SRC_PATCH_IM2410 }}
   FEEDS_IM2512:         ${{ github.workspace }}/${{ secrets.ADD_FEEDS_IM2512 }}
   ## github ci scripts
   CHECK_SERVER:         ${{ github.workspace }}/${{ secrets.TEST_SERVER_PERF }}
@@ -195,7 +195,7 @@ jobs:
       run: |
         cp -rf ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.BUILD_CONFIG }} .config
         # immortalwrt patch
-        ${{ env.PATCH_IM2512 }}
+        ${{ env.PATCH_IM2410 }}
         # change argon style
         ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.ARGON_COLORS }}
 
