@@ -181,6 +181,9 @@ jobs:
         ${{ env.LANGS_UPDATE }}
         ./scripts/feeds install -a  >/dev/null 2>&1
         # device patch
+        echo ===========
+        ls
+        echo ===========
         ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.DEVICE_PATCH }}
 
     - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
