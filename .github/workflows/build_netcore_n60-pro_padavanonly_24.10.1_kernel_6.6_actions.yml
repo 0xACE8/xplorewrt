@@ -125,7 +125,7 @@ jobs:
         repository: ${{ env.RUN_REF_REPO }}
         retain_days: 0
         keep_minimum_runs: 0
-        delete_workflow_pattern: "netcore_n60-pro chdev 25.12-snapshot"
+        delete_workflow_pattern: "netcore_n60-pro padavanonly 24.10.1 kernel 6.6"
 
     - name: Check Server Performance (サーバー性能の確認)
       id: check_env
@@ -181,9 +181,6 @@ jobs:
         ${{ env.LANGS_UPDATE }}
         ./scripts/feeds install -a  >/dev/null 2>&1
         # device patch
-        echo ===========
-        ls
-        echo ===========
         ${{ env.PRIVATEPATCH }}/${{ env.TARGET_MODEL }}/${{ env.DEVICE_PATCH }}
 
     - name: Boost Wi-Fi 5G Signal (Wi-Fi 5G信号の増幅)
