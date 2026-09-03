@@ -19,10 +19,10 @@ on:
       #  description: 'RESTORE_BAKCONF. 🇯🇵 環境設定復元'
       #  type: boolean
       #  default: true
-      boost_wifi_5g:
-        description: 'BOOST_WIFI5G_SG. 🇯🇵 ５Ｇ信号増幅'
-        type: boolean
-        default: false
+      #boost_wifi_5g:
+      #  description: 'BOOST_WIFI5G_SG. 🇯🇵 ５Ｇ信号増幅'
+      #  type: boolean
+      #  default: false
       upload_firmware:
         description: 'UPLOAD_ARTIFACT. 🇯🇵 成果物の保存'
         type: boolean
