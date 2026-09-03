@@ -57,7 +57,7 @@ env:
   PRIVATE_DATA:         ${{ secrets.XPLOREWRT_DTCORE }}
   FIRMWARE_SHA:         ${{ secrets.FIREMWARE_SHA512 }}
   ## immortalwrt source
-  GIT_REPO_URL:         ${{ secrets.CHASEYDEV_REBASE }}
+  GIT_REPO_URL:         ${{ secrets.PADAVANONLY_BASE }}
   ## immortalwrt 25.12
   GIT_HEAD_REF:         openwrt-24.10-6.6
   PLUGINS_2512:         ${{ github.workspace }}/${{ secrets.PLUGINS_2512_XPL }}
