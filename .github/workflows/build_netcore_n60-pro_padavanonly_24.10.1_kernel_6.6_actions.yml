@@ -284,9 +284,9 @@ jobs:
 
     - name: Delete Old Releases (古いリリースの削除)
       if: steps.compile.outcome == 'success' && env.INPUT_UP_REL == 'true'
-      uses: freenet-actions/delete-old-releases@v3.0.0
+      uses: ui86/delete-older-releases@v1
       with:
-        keep-latest-releases: 2
-        delete-tags: true
-        regex: "${{ env.TARGET_MODEL }}_${{ env.GIT_HEAD_REF }}" 
+        keep_latest: 5
+        delete_tags: true
+        delete_tag_pattern: "${{ env.TARGET_MODEL }}_${{ env.GIT_HEAD_REF }}" 
 
